@@ -1,4 +1,4 @@
-// Firebase Configuration
+// Firebase Configuration - Keep this secure
 const firebaseConfig = {
     apiKey: "AIzaSyBj1bi-xEDf-D0uBG1lSKUaMRI4JS8u4A4",
     authDomain: "ca-final-537aa.firebaseapp.com",
@@ -9,6 +9,14 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Enable Firestore offline persistence
+db.enablePersistence()
+  .catch((err) => {
+      console.log("Firestore persistence error:", err);
+  });
