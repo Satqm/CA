@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA Final Study Tracker | Satyam Kumar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen active">
+        <div class="login-container">
+            <div class="logo-section">
+                <div class="logo">📚</div>
+                <h1>CA Final Study Tracker</h1>
+                <p class="subtitle">Track your progress, ace your exams</p>
+            </div>
+            
+            <div class="auth-form" id="loginForm">
+                <h2>Welcome Back!</h2>
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="loginId" placeholder="Your ID" required>
+                </div>
+                <button class="btn-primary" onclick="login()">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                
+                <div class="auth-footer">
+                    <p>New user? <a href="#" onclick="showSignup()">Create account</a></p>
+                    <p class="remember-id">💡 Remember: Your ID is your username for login</p>
+                </div>
+            </div>
+            
+            <div class="auth-form" id="signupForm" style="display: none;">
+                <h2>Create Account</h2>
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="signupId" placeholder="Choose an ID" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-user-circle"></i>
+                    <input type="text" id="signupName" placeholder="Full Name" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="signupEmail" placeholder="Email" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="signupPassword" placeholder="Password" required>
+                </div>
+                <button class="btn-primary" onclick="signup()">
+                    <i class="fas fa-user-plus"></i> Sign Up
+                </button>
+                
+                <div class="auth-footer">
+                    <p>Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+                </div>
+            </div>
+            
+            <!-- Nice Connect Section -->
+            <div class="nice-connect">
+                <h3>Nice Connect</h3>
+                <p>Designed by Satyam Kumar</p>
+                <div class="social-links">
+                    <a href="https://www.linkedin.com/in/satyam-kumar5286o" target="_blank" title="LinkedIn">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                    <a href="https://youtube.com/@__satyamkumar?si=DFCsdCFrJCIIJglR" target="_blank" title="YouTube">
+                        <i class="fab fa-youtube"></i>
+                    </a>
+                    <a href="https://www.instagram.com/satyqm2.o?igsh=bmQ0aThzamRmMHli" target="_blank" title="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://satqm.github.io/Portfolio-/" target="_blank" title="Portfolio">
+                        <i class="fas fa-briefcase"></i>
+                    </a>
+                    <a href="https://wa.me/919142300129" target="_blank" title="WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="appScreen" class="screen">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <button class="menu-btn" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>CA Final Tracker</h1>
+            </div>
+            <div class="header-right">
+                <span class="user-welcome" id="userWelcome"></span>
+                <button class="btn-logout" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <nav>
+                <a href="#" class="nav-item active" onclick="showTab('dashboard')">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" onclick="showTab('syllabus')">
+                    <i class="fas fa-book"></i> Study Progress
+                </a>
+                <a href="#" class="nav-item" onclick="showTab('videos')">
+                    <i class="fas fa-video"></i> Videos
+                </a>
+                <a href="#" class="nav-item" onclick="showTab('notes')">
+                    <i class="fas fa-file-alt"></i> Notes
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="progress-circle">
+                    <canvas id="overallProgressCircle" width="60" height="60"></canvas>
+                    <span id="overallProgressText">0%</span>
+                </div>
+                <p>Overall Progress</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboardTab" class="tab-content active">
+                <div class="dashboard-header">
+                    <h2><i class="fas fa-chart-line"></i> Performance Dashboard</h2>
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="setProgressView('overall')">Overall</button>
+                        <button class="view-btn" onclick="setProgressView('subject')">Subject-wise</button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background: #4e73df;">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3>Planned Hours</h3>
+                            <span class="kpi-value" id="plannedHours">680</span>
+                            <p class="kpi-label">Total Syllabus</p>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background: #1cc88a;">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3>Actual Hours</h3>
+                            <span class="kpi-value" id="actualHours">0</span>
+                            <p class="kpi-label">Hours Studied</p>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background: #36b9cc;">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3>Completion %</h3>
+                            <span class="kpi-value" id="completionPercent">0%</span>
+                            <p class="kpi-label">Of Total Syllabus</p>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background: #f6c23e;">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3>Topics Done</h3>
+                            <span class="kpi-value" id="topicsDone">0</span>
+                            <p class="kpi-label">Out of 83</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Charts -->
+                <div class="chart-container">
+                    <div class="chart-card">
+                        <h3><i class="fas fa-chart-pie"></i> Progress Overview</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="progressChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3><i class="fas fa-tachometer-alt"></i> Subject Progress</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="subjectChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-card">
+                    <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                    <div id="recentActivity" class="activity-list">
+                        <div class="activity-item">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <span>No activity yet. Start studying!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Syllabus Tab -->
+            <div id="syllabusTab" class="tab-content">
+                <div class="syllabus-header">
+                    <h2><i class="fas fa-book"></i> Study Progress Tracker</h2>
+                    <div class="subject-filter">
+                        <select id="subjectFilter" onchange="filterSubjects()">
+                            <option value="all">All Subjects</option>
+                            <option value="Paper 1: FR">Paper 1: FR</option>
+                            <option value="Paper 2: AFM">Paper 2: AFM</option>
+                            <option value="Paper 3: Audit">Paper 3: Audit</option>
+                            <option value="Paper 4: DT">Paper 4: DT</option>
+                            <option value="Paper 5: IDT">Paper 5: IDT</option>
+                            <option value="Paper 6: IBS">Paper 6: IBS</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="syllabusTable">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Topic</th>
+                                <th>Subtopic</th>
+                                <th>Weightage</th>
+                                <th>Priority</th>
+                                <th>Est. Time (hrs)</th>
+                                <th>Status</th>
+                                <th>Actual Hours</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="syllabusTableBody">
+                            <!-- Syllabus data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Videos Tab -->
+            <div id="videosTab" class="tab-content">
+                <div class="resource-header">
+                    <h2><i class="fas fa-video"></i> Study Videos</h2>
+                    <button class="btn-primary" onclick="openVideoForm()">
+                        <i class="fas fa-plus"></i> Add Video
+                    </button>
+                </div>
+
+                <!-- Add Video Form -->
+                <div id="videoForm" class="resource-form" style="display: none;">
+                    <h3>Add New Video/Playlist</h3>
+                    <div class="form-group">
+                        <label>Subject:</label>
+                        <select id="videoSubject">
+                            <option value="Paper 1: FR">Paper 1: FR</option>
+                            <option value="Paper 2: AFM">Paper 2: AFM</option>
+                            <option value="Paper 3: Audit">Paper 3: Audit</option>
+                            <option value="Paper 4: DT">Paper 4: DT</option>
+                            <option value="Paper 5: IDT">Paper 5: IDT</option>
+                            <option value="Paper 6: IBS">Paper 6: IBS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input type="text" id="videoTitle" placeholder="Enter video title">
+                    </div>
+                    <div class="form-group">
+                        <label>Video/Playlist Link:</label>
+                        <input type="url" id="videoLink" placeholder="Enter YouTube/other video link">
+                    </div>
+                    <div class="form-group">
+                        <label>Type:</label>
+                        <select id="videoType">
+                            <option value="video">Single Video</option>
+                            <option value="playlist">Playlist</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-secondary" onclick="closeVideoForm()">Cancel</button>
+                        <button class="btn-primary" onclick="addVideo()">Add Video</button>
+                    </div>
+                </div>
+
+                <!-- Videos List -->
+                <div class="resource-grid" id="videosList">
+                    <!-- Videos will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Notes Tab -->
+            <div id="notesTab" class="tab-content">
+                <div class="resource-header">
+                    <h2><i class="fas fa-file-alt"></i> Study Notes</h2>
+                    <button class="btn-primary" onclick="openNotesForm()">
+                        <i class="fas fa-plus"></i> Add Notes
+                    </button>
+                </div>
+
+                <!-- Add Notes Form -->
+                <div id="notesForm" class="resource-form" style="display: none;">
+                    <h3>Add New Notes</h3>
+                    <div class="form-group">
+                        <label>Subject:</label>
+                        <select id="notesSubject">
+                            <option value="Paper 1: FR">Paper 1: FR</option>
+                            <option value="Paper 2: AFM">Paper 2: AFM</option>
+                            <option value="Paper 3: Audit">Paper 3: Audit</option>
+                            <option value="Paper 4: DT">Paper 4: DT</option>
+                            <option value="Paper 5: IDT">Paper 5: IDT</option>
+                            <option value="Paper 6: IBS">Paper 6: IBS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input type="text" id="notesTitle" placeholder="Enter notes title">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes Link (Google Drive):</label>
+                        <input type="url" id="notesLink" placeholder="Enter Google Drive link">
+                    </div>
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <textarea id="notesDescription" placeholder="Brief description of notes"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-secondary" onclick="closeNotesForm()">Cancel</button>
+                        <button class="btn-primary" onclick="addNotes()">Add Notes</button>
+                    </div>
+                </div>
+
+                <!-- Notes List -->
+                <div class="resource-grid" id="notesList">
+                    <!-- Notes will be loaded here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Modal for Status Update -->
+        <div id="statusModal" class="modal">
+            <div class="modal-content">
+                <h3>Update Study Progress</h3>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <select id="statusSelect">
+                            <option value="not-started">Not Started</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Actual Hours Spent:</label>
+                        <input type="number" id="actualHoursInput" min="0" step="0.5" placeholder="Enter hours">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes (optional):</label>
+                        <textarea id="progressNotes" placeholder="Any additional notes..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn-primary" onclick="saveProgress()">Save Progress</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase and Chart.js -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
