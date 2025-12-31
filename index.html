@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CA Final Study Tracker | Satyam Kumar</title>
+    <meta name="description" content="Track your CA Final study progress, manage syllabus, videos, and notes">
+    <meta name="theme-color" content="#4361ee">
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css">
@@ -11,8 +14,19 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loader">
+            <div class="loader-inner">
+                <div class="loader-circle"></div>
+                <h3>Loading CA Final Tracker</h3>
+                <p>Preparing your study dashboard...</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Login Screen -->
-    <div id="loginScreen" class="screen active">
+    <div id="loginScreen" class="screen">
         <div class="login-container">
             <div class="logo-section">
                 <div class="logo">📚</div>
@@ -20,23 +34,37 @@
                 <p class="subtitle">Track your progress, ace your exams</p>
             </div>
             
-            <div class="auth-form" id="loginForm">
+            <!-- Login Form -->
+            <div class="auth-form active" id="loginForm">
                 <h2>Welcome Back!</h2>
                 <div class="input-group">
                     <i class="fas fa-user"></i>
-                    <input type="text" id="loginId" placeholder="Your ID" required>
+                    <input type="text" id="loginId" placeholder="Your ID or Email" required>
                 </div>
-                <button class="btn-primary" onclick="login()">
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="loginPassword" placeholder="Password" required>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox">
+                        <input type="checkbox" id="rememberMe">
+                        <span>Remember me</span>
+                    </label>
+                </div>
+                <button class="btn-primary" onclick="login()" id="loginBtn">
                     <i class="fas fa-sign-in-alt"></i> Login
                 </button>
                 
                 <div class="auth-footer">
                     <p>New user? <a href="#" onclick="showSignup()">Create account</a></p>
-                    <p class="remember-id">💡 Remember: Your ID is your username for login</p>
+                    <div class="demo-credentials">
+                        <p><strong>Demo Login:</strong> ID: demo | Password: demo123</p>
+                    </div>
                 </div>
             </div>
             
-            <div class="auth-form" id="signupForm" style="display: none;">
+            <!-- Signup Form -->
+            <div class="auth-form" id="signupForm">
                 <h2>Create Account</h2>
                 <div class="input-group">
                     <i class="fas fa-user"></i>
@@ -52,21 +80,25 @@
                 </div>
                 <div class="input-group">
                     <i class="fas fa-lock"></i>
-                    <input type="password" id="signupPassword" placeholder="Password" required>
+                    <input type="password" id="signupPassword" placeholder="Password (min. 6 chars)" required>
                 </div>
-                <button class="btn-primary" onclick="signup()">
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="signupConfirmPassword" placeholder="Confirm Password" required>
+                </div>
+                <button class="btn-primary" onclick="signup()" id="signupBtn">
                     <i class="fas fa-user-plus"></i> Sign Up
                 </button>
                 
                 <div class="auth-footer">
                     <p>Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+                    <p class="remember-id">💡 Remember your ID for login</p>
                 </div>
             </div>
             
             <!-- Nice Connect Section -->
             <div class="nice-connect">
-                <h3>Nice Connect</h3>
-                <p>Designed by Satyam Kumar</p>
+                <h3>Designed by Satyam Kumar</h3>
                 <div class="social-links">
                     <a href="https://www.linkedin.com/in/satyam-kumar5286o" target="_blank" title="LinkedIn">
                         <i class="fab fa-linkedin"></i>
@@ -84,6 +116,7 @@
                         <i class="fab fa-whatsapp"></i>
                     </a>
                 </div>
+                <p class="copyright">© 2024 CA Final Tracker</p>
             </div>
         </div>
     </div>
@@ -99,68 +132,93 @@
                 <h1>CA Final Tracker</h1>
             </div>
             <div class="header-right">
-                <span class="user-welcome" id="userWelcome"></span>
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="userWelcome">Welcome</span>
+                </div>
                 <button class="btn-logout" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
             </div>
         </header>
 
- <!-- In the sidebar section, update to show all tabs -->
-<nav>
-    <a href="#" class="nav-item active" onclick="showTab('dashboard')">
-        <i class="fas fa-chart-pie"></i> Dashboard
-    </a>
-    <a href="#" class="nav-item" onclick="showTab('progress')">
-        <i class="fas fa-book"></i> Study Progress
-    </a>
-    <a href="#" class="nav-item" onclick="showTab('tracker')">
-        <i class="fas fa-tasks"></i> Progress Tracker
-    </a>
-    <a href="#" class="nav-item" onclick="showTab('videos')">
-        <i class="fas fa-video"></i> Videos
-    </a>
-    <a href="#" class="nav-item" onclick="showTab('notes')">
-        <i class="fas fa-file-alt"></i> Notes
-    </a>
-</nav>
-            
-            <div class="sidebar-footer">
-                <div class="progress-circle">
-                    <canvas id="overallProgressCircle" width="60" height="60"></canvas>
-                    <span id="overallProgressText">0%</span>
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <nav>
+                    <a href="#" class="nav-item active" onclick="showTab('dashboard')">
+                        <i class="fas fa-chart-pie"></i> Dashboard
+                    </a>
+                    <a href="#" class="nav-item" onclick="showTab('progress')">
+                        <i class="fas fa-book"></i> Study Progress
+                    </a>
+                    <a href="#" class="nav-item" onclick="showTab('tracker')">
+                        <i class="fas fa-tasks"></i> Progress Tracker
+                    </a>
+                    <a href="#" class="nav-item" onclick="showTab('videos')">
+                        <i class="fas fa-video"></i> Videos
+                    </a>
+                    <a href="#" class="nav-item" onclick="showTab('notes')">
+                        <i class="fas fa-file-alt"></i> Notes
+                    </a>
+                    <a href="#" class="nav-item" onclick="showTab('planner')">
+                        <i class="fas fa-calendar-alt"></i> Study Planner
+                    </a>
+                </nav>
+                
+                <div class="sidebar-footer">
+                    <div class="progress-summary">
+                        <div class="progress-circle">
+                            <canvas id="overallProgressCircle" width="80" height="80"></canvas>
+                            <span id="overallProgressText">0%</span>
+                        </div>
+                        <div class="progress-info">
+                            <h4>Overall Progress</h4>
+                            <p id="progressSubtitle">0 of 83 topics</p>
+                        </div>
+                    </div>
                 </div>
-                <p>Overall Progress</p>
             </div>
         </div>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" id="mainContent">
             <!-- Dashboard Tab -->
             <div id="dashboardTab" class="tab-content active">
                 <div class="dashboard-header">
                     <h2><i class="fas fa-chart-line"></i> Performance Dashboard</h2>
-                    <div class="view-toggle">
-                        <button class="view-btn active" onclick="setProgressView('overall')">Overall</button>
-                        <button class="view-btn" onclick="setProgressView('subject')">Subject-wise</button>
+                    <div class="dashboard-controls">
+                        <div class="view-toggle">
+                            <button class="view-btn active" onclick="setProgressView('overall')">Overall</button>
+                            <button class="view-btn" onclick="setProgressView('subject')">Subject-wise</button>
+                        </div>
+                        <select id="subjectFilterDashboard" class="subject-dropdown" style="display: none;" onchange="updateDashboardCharts()">
+                            <option value="all">All Subjects</option>
+                            <option value="Paper 1: FR">Paper 1: FR</option>
+                            <option value="Paper 2: AFM">Paper 2: AFM</option>
+                            <option value="Paper 3: Audit">Paper 3: Audit</option>
+                            <option value="Paper 4: DT">Paper 4: DT</option>
+                            <option value="Paper 5: IDT">Paper 5: IDT</option>
+                            <option value="Paper 6: IBS">Paper 6: IBS</option>
+                        </select>
                     </div>
                 </div>
 
                 <!-- KPI Cards -->
                 <div class="kpi-grid">
                     <div class="kpi-card">
-                        <div class="kpi-icon" style="background: #4e73df;">
+                        <div class="kpi-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                             <i class="fas fa-clock"></i>
                         </div>
                         <div class="kpi-content">
                             <h3>Planned Hours</h3>
                             <span class="kpi-value" id="plannedHours">680</span>
-                            <p class="kpi-label">Total Syllabus</p>
+                            <p class="kpi-label">Total Syllabus Hours</p>
                         </div>
                     </div>
                     
                     <div class="kpi-card">
-                        <div class="kpi-icon" style="background: #1cc88a;">
+                        <div class="kpi-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                             <i class="fas fa-check-circle"></i>
                         </div>
                         <div class="kpi-content">
@@ -171,7 +229,7 @@
                     </div>
                     
                     <div class="kpi-card">
-                        <div class="kpi-icon" style="background: #36b9cc;">
+                        <div class="kpi-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                             <i class="fas fa-percentage"></i>
                         </div>
                         <div class="kpi-content">
@@ -182,13 +240,13 @@
                     </div>
                     
                     <div class="kpi-card">
-                        <div class="kpi-icon" style="background: #f6c23e;">
+                        <div class="kpi-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
                             <i class="fas fa-book-open"></i>
                         </div>
                         <div class="kpi-content">
                             <h3>Topics Done</h3>
                             <span class="kpi-value" id="topicsDone">0</span>
-                            <p class="kpi-label">Out of 83</p>
+                            <p class="kpi-label">Out of 83 Topics</p>
                         </div>
                     </div>
                 </div>
@@ -215,19 +273,35 @@
                     <h3><i class="fas fa-history"></i> Recent Activity</h3>
                     <div id="recentActivity" class="activity-list">
                         <div class="activity-item">
-                            <i class="fas fa-check-circle text-success"></i>
-                            <span>No activity yet. Start studying!</span>
+                            <i class="fas fa-info-circle text-info"></i>
+                            <span>No recent activity. Start studying!</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <h4><i class="fas fa-running"></i> Study Streak</h4>
+                        <div class="stat-value">0 days</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4><i class="fas fa-bolt"></i> Daily Goal</h4>
+                        <div class="stat-value">3 hrs</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4><i class="fas fa-calendar-check"></i> Days Left</h4>
+                        <div class="stat-value" id="daysLeft">180</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Syllabus Tab -->
-            <div id="syllabusTab" class="tab-content">
+            <!-- Study Progress Tab -->
+            <div id="progressTab" class="tab-content">
                 <div class="syllabus-header">
-                    <h2><i class="fas fa-book"></i> Study Progress Tracker</h2>
-                    <div class="subject-filter">
-                        <select id="subjectFilter" onchange="filterSubjects()">
+                    <h2><i class="fas fa-book"></i> Study Progress Overview</h2>
+                    <div class="progress-filters">
+                        <select id="subjectFilter" onchange="loadSyllabusTable()">
                             <option value="all">All Subjects</option>
                             <option value="Paper 1: FR">Paper 1: FR</option>
                             <option value="Paper 2: AFM">Paper 2: AFM</option>
@@ -236,10 +310,22 @@
                             <option value="Paper 5: IDT">Paper 5: IDT</option>
                             <option value="Paper 6: IBS">Paper 6: IBS</option>
                         </select>
+                        <select id="statusFilter" onchange="loadSyllabusTable()">
+                            <option value="all">All Status</option>
+                            <option value="not-started">Not Started</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        <select id="priorityFilter" onchange="loadSyllabusTable()">
+                            <option value="all">All Priorities</option>
+                            <option value="A">Priority A</option>
+                            <option value="B">Priority B</option>
+                            <option value="C">Priority C</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="table-container">
+                <div class="table-responsive">
                     <table id="syllabusTable">
                         <thead>
                             <tr>
@@ -248,9 +334,9 @@
                                 <th>Subtopic</th>
                                 <th>Weightage</th>
                                 <th>Priority</th>
-                                <th>Est. Time (hrs)</th>
-                                <th>Status</th>
+                                <th>Planned Hours</th>
                                 <th>Actual Hours</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -258,6 +344,43 @@
                             <!-- Syllabus data will be loaded here -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Progress Tracker Tab -->
+            <div id="trackerTab" class="tab-content">
+                <div class="tracker-header">
+                    <h2><i class="fas fa-tasks"></i> Progress Tracker</h2>
+                    <div class="tracker-controls">
+                        <div class="subject-selector">
+                            <select id="trackerSubject" onchange="loadSubjectForTracker()">
+                                <option value="">Select Subject</option>
+                                <option value="Paper 1: FR">Paper 1: FR</option>
+                                <option value="Paper 2: AFM">Paper 2: AFM</option>
+                                <option value="Paper 3: Audit">Paper 3: Audit</option>
+                                <option value="Paper 4: DT">Paper 4: DT</option>
+                                <option value="Paper 5: IDT">Paper 5: IDT</option>
+                                <option value="Paper 6: IBS">Paper 6: IBS</option>
+                            </select>
+                            <button class="btn-secondary" onclick="showAllTopics()">
+                                <i class="fas fa-list"></i> Show All
+                            </button>
+                        </div>
+                        <button class="btn-primary" onclick="openCustomPlanModal()">
+                            <i class="fas fa-plus"></i> Add Custom Topic
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tracker-content" id="trackerContent">
+                    <div class="empty-state">
+                        <i class="fas fa-book-open"></i>
+                        <h3>Select a subject to track progress</h3>
+                        <p>Choose a subject from the dropdown above to start tracking your study progress.</p>
+                        <button class="btn-primary" onclick="showAllTopics()">
+                            <i class="fas fa-eye"></i> View All Topics
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -273,16 +396,27 @@
                 <!-- Add Video Form -->
                 <div id="videoForm" class="resource-form" style="display: none;">
                     <h3>Add New Video/Playlist</h3>
-                    <div class="form-group">
-                        <label>Subject:</label>
-                        <select id="videoSubject">
-                            <option value="Paper 1: FR">Paper 1: FR</option>
-                            <option value="Paper 2: AFM">Paper 2: AFM</option>
-                            <option value="Paper 3: Audit">Paper 3: Audit</option>
-                            <option value="Paper 4: DT">Paper 4: DT</option>
-                            <option value="Paper 5: IDT">Paper 5: IDT</option>
-                            <option value="Paper 6: IBS">Paper 6: IBS</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Subject:</label>
+                            <select id="videoSubject">
+                                <option value="All">All Subjects</option>
+                                <option value="Paper 1: FR">Paper 1: FR</option>
+                                <option value="Paper 2: AFM">Paper 2: AFM</option>
+                                <option value="Paper 3: Audit">Paper 3: Audit</option>
+                                <option value="Paper 4: DT">Paper 4: DT</option>
+                                <option value="Paper 5: IDT">Paper 5: IDT</option>
+                                <option value="Paper 6: IBS">Paper 6: IBS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Type:</label>
+                            <select id="videoType">
+                                <option value="video">Single Video</option>
+                                <option value="playlist">Playlist</option>
+                                <option value="lecture">Lecture</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Title:</label>
@@ -293,11 +427,8 @@
                         <input type="url" id="videoLink" placeholder="Enter YouTube/other video link">
                     </div>
                     <div class="form-group">
-                        <label>Type:</label>
-                        <select id="videoType">
-                            <option value="video">Single Video</option>
-                            <option value="playlist">Playlist</option>
-                        </select>
+                        <label>Description:</label>
+                        <textarea id="videoDescription" placeholder="Brief description of the video content" rows="3"></textarea>
                     </div>
                     <div class="form-actions">
                         <button class="btn-secondary" onclick="closeVideoForm()">Cancel</button>
@@ -305,9 +436,13 @@
                     </div>
                 </div>
 
-                <!-- Videos List -->
+                <!-- Videos Grid -->
                 <div class="resource-grid" id="videosList">
-                    <!-- Videos will be loaded here -->
+                    <div class="resource-card placeholder">
+                        <i class="fas fa-video"></i>
+                        <h4>No videos added yet</h4>
+                        <p>Add your first video to get started</p>
+                    </div>
                 </div>
             </div>
 
@@ -323,28 +458,40 @@
                 <!-- Add Notes Form -->
                 <div id="notesForm" class="resource-form" style="display: none;">
                     <h3>Add New Notes</h3>
-                    <div class="form-group">
-                        <label>Subject:</label>
-                        <select id="notesSubject">
-                            <option value="Paper 1: FR">Paper 1: FR</option>
-                            <option value="Paper 2: AFM">Paper 2: AFM</option>
-                            <option value="Paper 3: Audit">Paper 3: Audit</option>
-                            <option value="Paper 4: DT">Paper 4: DT</option>
-                            <option value="Paper 5: IDT">Paper 5: IDT</option>
-                            <option value="Paper 6: IBS">Paper 6: IBS</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Subject:</label>
+                            <select id="notesSubject">
+                                <option value="All">All Subjects</option>
+                                <option value="Paper 1: FR">Paper 1: FR</option>
+                                <option value="Paper 2: AFM">Paper 2: AFM</option>
+                                <option value="Paper 3: Audit">Paper 3: Audit</option>
+                                <option value="Paper 4: DT">Paper 4: DT</option>
+                                <option value="Paper 5: IDT">Paper 5: IDT</option>
+                                <option value="Paper 6: IBS">Paper 6: IBS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Format:</label>
+                            <select id="notesFormat">
+                                <option value="pdf">PDF</option>
+                                <option value="doc">DOC</option>
+                                <option value="drive">Google Drive</option>
+                                <option value="link">Web Link</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Title:</label>
                         <input type="text" id="notesTitle" placeholder="Enter notes title">
                     </div>
                     <div class="form-group">
-                        <label>Notes Link (Google Drive):</label>
-                        <input type="url" id="notesLink" placeholder="Enter Google Drive link">
+                        <label>Notes Link:</label>
+                        <input type="url" id="notesLink" placeholder="Enter Google Drive or other link">
                     </div>
                     <div class="form-group">
                         <label>Description:</label>
-                        <textarea id="notesDescription" placeholder="Brief description of notes"></textarea>
+                        <textarea id="notesDescription" placeholder="Brief description of notes" rows="3"></textarea>
                     </div>
                     <div class="form-actions">
                         <button class="btn-secondary" onclick="closeNotesForm()">Cancel</button>
@@ -352,41 +499,197 @@
                     </div>
                 </div>
 
-                <!-- Notes List -->
+                <!-- Notes Grid -->
                 <div class="resource-grid" id="notesList">
-                    <!-- Notes will be loaded here -->
+                    <div class="resource-card placeholder">
+                        <i class="fas fa-file-alt"></i>
+                        <h4>No notes added yet</h4>
+                        <p>Add your first notes to get started</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Study Planner Tab -->
+            <div id="plannerTab" class="tab-content">
+                <div class="planner-header">
+                    <h2><i class="fas fa-calendar-alt"></i> Study Planner</h2>
+                    <div class="planner-controls">
+                        <button class="btn-primary" onclick="generateStudyPlan()">
+                            <i class="fas fa-magic"></i> Generate Plan
+                        </button>
+                        <button class="btn-secondary" onclick="clearStudyPlan()">
+                            <i class="fas fa-trash"></i> Clear Plan
+                        </button>
+                    </div>
+                </div>
+
+                <div class="planner-content">
+                    <div class="planner-card">
+                        <h3><i class="fas fa-calculator"></i> Plan Calculator</h3>
+                        <div class="plan-inputs">
+                            <div class="input-group">
+                                <label>Total Days Available:</label>
+                                <input type="number" id="totalDays" value="180" min="1" max="365">
+                            </div>
+                            <div class="input-group">
+                                <label>Daily Study Hours:</label>
+                                <input type="number" id="dailyHours" value="4" min="1" max="12" step="0.5">
+                            </div>
+                            <div class="input-group">
+                                <label>Start Date:</label>
+                                <input type="date" id="startDate" value="">
+                            </div>
+                            <button class="btn-primary" onclick="calculateStudyPlan()">
+                                <i class="fas fa-calculator"></i> Calculate Plan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="planner-card">
+                        <h3><i class="fas fa-chart-bar"></i> Study Schedule</h3>
+                        <div id="studySchedule">
+                            <div class="empty-state">
+                                <i class="fas fa-calendar"></i>
+                                <h4>No study plan generated yet</h4>
+                                <p>Use the calculator to generate a study schedule</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="planner-card">
+                        <h3><i class="fas fa-bullseye"></i> Daily Targets</h3>
+                        <div id="dailyTargets">
+                            <div class="target-item">
+                                <div class="target-subject">Paper 1: FR</div>
+                                <div class="target-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span>0/32 topics</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
 
-        <!-- Modal for Status Update -->
-        <div id="statusModal" class="modal">
+        <!-- Progress Update Modal -->
+        <div id="progressModal" class="modal">
             <div class="modal-content">
-                <h3>Update Study Progress</h3>
+                <div class="modal-header">
+                    <h3>Update Study Progress</h3>
+                    <button class="modal-close" onclick="closeProgressModal()">&times;</button>
+                </div>
                 <div class="modal-body">
+                    <div class="topic-info" id="modalTopicInfo">
+                        <h4 id="modalTopicName"></h4>
+                        <p id="modalSubtopicName"></p>
+                    </div>
+                    
                     <div class="form-group">
                         <label>Status:</label>
-                        <select id="statusSelect">
-                            <option value="not-started">Not Started</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                        </select>
+                        <div class="status-buttons">
+                            <button class="status-btn not-started active" onclick="setStatus('not-started')">Not Started</button>
+                            <button class="status-btn in-progress" onclick="setStatus('in-progress')">In Progress</button>
+                            <button class="status-btn completed" onclick="setStatus('completed')">Completed</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Actual Hours Spent:</label>
-                        <input type="number" id="actualHoursInput" min="0" step="0.5" placeholder="Enter hours">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Planned Hours:</label>
+                            <input type="number" id="plannedHoursInput" min="0" step="0.5" placeholder="Enter hours">
+                        </div>
+                        <div class="form-group">
+                            <label>Actual Hours Spent:</label>
+                            <input type="number" id="actualHoursInput" min="0" step="0.5" placeholder="Enter hours">
+                        </div>
                     </div>
+                    
                     <div class="form-group">
                         <label>Notes (optional):</label>
-                        <textarea id="progressNotes" placeholder="Any additional notes..."></textarea>
+                        <textarea id="progressNotes" placeholder="Any additional notes about your progress..." rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Completion Date:</label>
+                        <input type="date" id="completionDate">
                     </div>
                 </div>
                 <div class="modal-actions">
-                    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn-secondary" onclick="closeProgressModal()">Cancel</button>
                     <button class="btn-primary" onclick="saveProgress()">Save Progress</button>
                 </div>
             </div>
         </div>
+
+        <!-- Custom Plan Modal -->
+        <div id="customPlanModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add Custom Topic</h3>
+                    <button class="modal-close" onclick="closeCustomPlanModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Subject:</label>
+                            <select id="customSubject" required>
+                                <option value="">Select Subject</option>
+                                <option value="Paper 1: FR">Paper 1: FR</option>
+                                <option value="Paper 2: AFM">Paper 2: AFM</option>
+                                <option value="Paper 3: Audit">Paper 3: Audit</option>
+                                <option value="Paper 4: DT">Paper 4: DT</option>
+                                <option value="Paper 5: IDT">Paper 5: IDT</option>
+                                <option value="Paper 6: IBS">Paper 6: IBS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Priority:</label>
+                            <select id="customPriority">
+                                <option value="A">Priority A</option>
+                                <option value="B">Priority B</option>
+                                <option value="C">Priority C</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Topic Name:</label>
+                        <input type="text" id="customTopicName" placeholder="Enter topic name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Subtopic Name:</label>
+                        <input type="text" id="customSubtopicName" placeholder="Enter subtopic name" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Weightage:</label>
+                            <input type="text" id="customWeightage" placeholder="e.g., 10-15%">
+                        </div>
+                        <div class="form-group">
+                            <label>Planned Hours:</label>
+                            <input type="number" id="customPlannedHours" min="0" step="0.5" placeholder="Hours" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description (optional):</label>
+                        <textarea id="customDescription" placeholder="Brief description of this topic" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeCustomPlanModal()">Cancel</button>
+                    <button class="btn-primary" onclick="saveCustomTopic()">Add Topic</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div id="notificationToast" class="toast"></div>
     </div>
 
     <!-- Firebase and Chart.js -->
@@ -397,4 +700,4 @@
     <script src="firebase-config.js"></script>
     <script src="app.js"></script>
 </body>
-</html>
+    </html>
