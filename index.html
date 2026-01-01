@@ -4146,108 +4146,117 @@
         }
         
         function saveTarget() {
-            if (!currentUser) return;
+    if (!currentUser) return;
+    
+    const targetType = document.getElementById('target-type').value;
+    const targetDate = document.getElementById('target-date').value;
+    const subject = document.getElementById('planning-subject').value;
+    const topicSelect = document.getElementById('planning-topic').value;
+    const customTopic = document.getElementById('custom-topic').value;
+    const subtopic = document.getElementById('planning-subtopic').value;
+    const plannedHours = parseFloat(document.getElementById('planned-hours-input').value) || 2;
+    const description = document.getElementById('target-description').value;
+    const messageDiv = document.getElementById('target-message');
+    
+    if (!subject || (!topicSelect && !customTopic)) {
+        showMessage(messageDiv, 'Please select subject and topic', 'error');
+        return;
+    }
+    
+    const topic = topicSelect === 'custom' ? customTopic : topicSelect;
+    
+    // Create the target date as Firestore timestamp
+    const targetDateObj = new Date(targetDate);
+    
+    const targetData = {
+        userId: currentUser.uid,
+        targetType: targetType,
+        targetDate: firebase.firestore.Timestamp.fromDate(targetDateObj),
+        subject: subject,
+        topic: topic,
+        subtopic: subtopic || '',
+        plannedHours: plannedHours,
+        actualHours: 0,
+        completed: false,
+        description: description,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    const saveBtn = document.getElementById('save-target-btn');
+    saveBtn.innerHTML = '<div class="loading"></div> Saving...';
+    saveBtn.disabled = true;
+    
+    console.log("Saving target:", targetData); // Debug log
+    
+    db.collection('targets').add(targetData)
+        .then(() => {
+            showMessage(messageDiv, 'Target saved successfully!', 'success');
             
-            const targetType = document.getElementById('target-type').value;
-            const targetDate = document.getElementById('target-date').value;
-            const subject = document.getElementById('planning-subject').value;
-            const topicSelect = document.getElementById('planning-topic').value;
-            const customTopic = document.getElementById('custom-topic').value;
-            const subtopic = document.getElementById('planning-subtopic').value;
-            const plannedHours = parseFloat(document.getElementById('planned-hours-input').value) || 2;
-            const description = document.getElementById('target-description').value;
-            const messageDiv = document.getElementById('target-message');
+            // Reset form
+            document.getElementById('target-date').value = formattedToday;
+            document.getElementById('planning-subject').value = '';
+            document.getElementById('planning-topic').value = '';
+            document.getElementById('custom-topic').value = '';
+            document.getElementById('planning-subtopic').value = '';
+            document.getElementById('planned-hours-input').value = 2;
+            document.getElementById('target-description').value = '';
             
-            if (!subject || (!topicSelect && !customTopic)) {
-                showMessage(messageDiv, 'Please select subject and topic', 'error');
-                return;
-            }
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Target';
+            saveBtn.disabled = false;
             
-            const topic = topicSelect === 'custom' ? customTopic : topicSelect;
+            // Reload targets
+            loadTargets();
+            showToast('Target saved successfully!', 'success');
             
-            const targetData = {
-                userId: currentUser.uid,
-                targetType: targetType,
-                targetDate: new Date(targetDate),
-                subject: subject,
-                topic: topic,
-                subtopic: subtopic || '',
-                plannedHours: plannedHours,
-                actualHours: 0,
-                completed: false,
-                description: description,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            const saveBtn = document.getElementById('save-target-btn');
-            saveBtn.innerHTML = '<div class="loading"></div> Saving...';
-            saveBtn.disabled = true;
-            
-            db.collection('targets').add(targetData)
-                .then(() => {
-                    showMessage(messageDiv, 'Target saved successfully!', 'success');
-                    
-                    // Reset form
-                    document.getElementById('target-date').value = formattedToday;
-                    document.getElementById('planning-subject').value = '';
-                    document.getElementById('planning-topic').value = '';
-                    document.getElementById('custom-topic').value = '';
-                    document.getElementById('planning-subtopic').value = '';
-                    document.getElementById('planned-hours-input').value = 2;
-                    document.getElementById('target-description').value = '';
-                    
-                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Target';
-                    saveBtn.disabled = false;
-                    
-                    // Reload targets
-                    loadTargets();
-                    showToast('Target saved successfully!', 'success');
-                    
-                    // Collapse form
-                    planningToggle.classList.remove('expanded');
-                    planningForm.classList.remove('expanded');
-                })
-                .catch((error) => {
-                    showMessage(messageDiv, 'Error saving target: ' + error.message, 'error');
-                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Target';
-                    saveBtn.disabled = false;
-                });
+            // Collapse form
+            planningToggle.classList.remove('expanded');
+            planningForm.classList.remove('expanded');
+        })
+        .catch((error) => {
+            console.error("Error saving target:", error);
+            showMessage(messageDiv, 'Error saving target: ' + error.message, 'error');
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Target';
+            saveBtn.disabled = false;
+        });
+}
+
+        
+function updateTargetActualHours(targetId, actualHours) {
+    if (!currentUser) return;
+    
+    console.log("Updating target:", targetId, "with hours:", actualHours); // Debug log
+    
+    db.collection('targets').doc(targetId).update({
+        actualHours: actualHours,
+        completed: actualHours > 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+        // Update local data
+        const target = userTargets.find(t => t.id === targetId);
+        if (target) {
+            target.actualHours = actualHours;
+            target.completed = actualHours > 0;
         }
         
-        function updateTargetActualHours(targetId, actualHours) {
-            if (!currentUser) return;
-            
-            db.collection('targets').doc(targetId).update({
-                actualHours: actualHours,
-                completed: actualHours > 0,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                // Update local data
-                const target = userTargets.find(t => t.id === targetId);
-                if (target) {
-                    target.actualHours = actualHours;
-                    target.completed = actualHours > 0;
-                }
-                
-                showToast('Actual hours updated!', 'success');
-                
-                // Update dashboard stats
-                updateDashboard();
-                
-                // Update planning stats
-                const today = new Date().toDateString();
-                const todayTargets = userTargets.filter(t => {
-                    const targetDate = new Date(t.targetDate.seconds * 1000);
-                    return targetDate.toDateString() === today;
-                });
-                updatePlanningStats(todayTargets);
-            })
-            .catch((error) => {
-                console.error("Error updating target:", error);
-                showToast('Error updating target', 'error');
-            });
-        }
+        showToast('Actual hours updated!', 'success');
+        
+        // Update dashboard stats
+        updateDashboard();
+        
+        // Update planning stats
+        const today = new Date().toDateString();
+        const todayTargets = userTargets.filter(t => {
+            const targetDate = t.targetDate ? (t.targetDate.toDate ? t.targetDate.toDate() : new Date(t.targetDate.seconds * 1000)) : new Date();
+            return targetDate.toDateString() === today;
+        });
+        updatePlanningStats(todayTargets);
+    })
+    .catch((error) => {
+        console.error("Error updating target:", error);
+        showToast('Error updating target: ' + error.message, 'error');
+    });
+}
         
         function markTargetComplete(targetId) {
             const target = userTargets.find(t => t.id === targetId);
