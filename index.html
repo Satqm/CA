@@ -3395,20 +3395,20 @@
                 console.error("Error loading study plan:", error);
             });
             
-            // Load targets
-function loadTargets() {
+     function loadTargets() {
     if (!currentUser) return;
     
-    console.log("Loading targets for user:", currentUser.uid); // Debug log
+    console.log("Loading targets for user:", currentUser.uid);
+    
+    const targetsList = document.getElementById('targets-list');
+    targetsList.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check"></i><h3>Loading targets...</h3></div>';
     
     db.collection('targets')
         .where('userId', '==', currentUser.uid)
-        .orderBy('targetDate', 'desc')
         .get()
         .then((querySnapshot) => {
-            console.log("Targets found:", querySnapshot.size); // Debug log
+            console.log("Targets found:", querySnapshot.size);
             userTargets = [];
-            const targetsList = document.getElementById('targets-list');
             
             if (querySnapshot.empty) {
                 targetsList.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-plus"></i><h3>No targets set</h3><p>Add your first target to get started!</p></div>';
@@ -3442,15 +3442,18 @@ function loadTargets() {
                 }
                 
                 const subjectName = getSubjectName(target.subject);
+                const targetTypeName = getTargetTypeName(target.targetType);
                 
-                targetsHTML += `<div class="target-item" data-id="${doc.id}">
+                targetsHTML += `
+                <div class="target-item" data-id="${doc.id}">
                     <div class="target-header">
                         <div class="target-title">${target.topic}</div>
                         <span class="target-subject">${subjectName}</span>
                     </div>
                     <div class="target-details">
-                        <div>Type: ${target.targetType}</div>
-                        <div>Date: ${formatDate(targetDate)}</div>
+                        <div><strong>Type:</strong> ${targetTypeName}</div>
+                        <div><strong>Date:</strong> ${formatDate(targetDate)}</div>
+                        ${target.subtopic ? `<div><strong>Subtopic:</strong> ${target.subtopic}</div>` : ''}
                     </div>
                     <div class="target-time">
                         <div class="target-planned">
@@ -3458,21 +3461,40 @@ function loadTargets() {
                         </div>
                         <div class="target-actual">
                             <strong>Actual:</strong>
-                            <input type="number" 
-                                   class="actual-hours-input"
-                                   value="${target.actualHours || 0}"
-                                   min="0"
-                                   step="0.5"
-                                   data-id="${doc.id}">
-                            <span>hrs</span>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="number" 
+                                       class="actual-hours-input"
+                                       value="${target.actualHours || 0}"
+                                       min="0"
+                                       max="24"
+                                       step="0.5"
+                                       data-id="${doc.id}"
+                                       style="width: 80px; padding: 8px; border: 2px solid #e9ecef; border-radius: 6px;">
+                                <span>hrs</span>
+                                <button class="save-hours-btn" data-id="${doc.id}" style="padding: 8px 15px; background: var(--secondary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    Save
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    ${target.description ? `<p style="margin-top: 10px; color: var(--gray); font-size: 14px;">${target.description}</p>` : ''}
-                    <div class="target-actions">
-                        <button class="mark-complete-btn" data-id="${doc.id}">
-                            <i class="fas fa-check"></i> Mark Complete
+                    <div class="target-progress">
+                        <div class="progress-bar" style="height: 10px; background: #e9ecef; border-radius: 5px; margin: 15px 0; overflow: hidden;">
+                            <div class="progress-fill" style="height: 100%; background: var(${target.completed ? '--success' : '--secondary'}); width: ${Math.min(100, ((target.actualHours || 0) / target.plannedHours) * 100)}%;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--gray);">
+                            <span>${target.completed ? '✓ Completed' : 'In Progress'}</span>
+                            <span>${target.actualHours || 0}/${target.plannedHours} hrs</span>
+                        </div>
+                    </div>
+                    ${target.description ? `<div class="target-description" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: var(--gray);">${target.description}</div>` : ''}
+                    <div class="target-actions" style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="mark-complete-btn" data-id="${doc.id}" style="padding: 8px 16px; background: ${target.completed ? '#27ae60' : 'var(--success)'}; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; flex: 1;">
+                            <i class="fas fa-check"></i> ${target.completed ? 'Completed' : 'Mark Complete'}
                         </button>
-                        <button class="delete-target-btn" data-id="${doc.id}">
+                        <button class="add-remark-btn" data-id="${doc.id}" style="padding: 8px 16px; background: var(--warning); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; flex: 1;">
+                            <i class="fas fa-comment"></i> Add Remark
+                        </button>
+                        <button class="delete-target-btn" data-id="${doc.id}" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; flex: 1;">
                             <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
@@ -3483,35 +3505,16 @@ function loadTargets() {
             updatePlanningStats(todayTargets);
             
             // Add event listeners
-            document.querySelectorAll('.actual-hours-input').forEach(input => {
-                input.addEventListener('change', function() {
-                    const targetId = this.getAttribute('data-id');
-                    const actualHours = parseFloat(this.value) || 0;
-                    updateTargetActualHours(targetId, actualHours);
-                });
-            });
-            
-            document.querySelectorAll('.mark-complete-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const targetId = this.getAttribute('data-id');
-                    markTargetComplete(targetId);
-                });
-            });
-            
-            document.querySelectorAll('.delete-target-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const targetId = this.getAttribute('data-id');
-                    deleteTarget(targetId);
-                });
-            });
+            addTargetEventListeners();
             
         })
         .catch((error) => {
             console.error("Error loading targets:", error);
-            document.getElementById('targets-list').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error loading targets: ' + error.message + '</h3></div>';
+            targetsList.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error loading targets</h3><p>${error.message}</p></div>`;
         });
 }
 
+            
             
             // Calculate subject hours based on weightage
             for (const subjectId in syllabusData) {
@@ -3572,7 +3575,237 @@ function loadTargets() {
                 }
             });
         }
+        function getTargetTypeName(type) {
+    const typeMap = {
+        'daily': 'Daily Target',
+        'weekly': 'Weekly Target',
+        'monthly': 'Monthly Target'
+    };
+    return typeMap[type] || type;
+}
+
+function addTargetEventListeners() {
+    // Save hours buttons
+    document.querySelectorAll('.save-hours-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-id');
+            const input = document.querySelector(`.actual-hours-input[data-id="${targetId}"]`);
+            const actualHours = parseFloat(input.value) || 0;
+            updateTargetActualHours(targetId, actualHours);
+        });
+    });
+    
+    // Mark complete buttons
+    document.querySelectorAll('.mark-complete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-id');
+            markTargetComplete(targetId);
+        });
+    });
+    
+    // Add remark buttons
+    document.querySelectorAll('.add-remark-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-id');
+            addRemarkToTarget(targetId);
+        });
+    });
+    
+    // Delete buttons
+    document.querySelectorAll('.delete-target-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-id');
+            deleteTarget(targetId);
+        });
+    });
+    
+    // Actual hours input change
+    document.querySelectorAll('.actual-hours-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const targetId = this.getAttribute('data-id');
+            const actualHours = parseFloat(this.value) || 0;
+            // Auto-save when user changes the value and clicks away
+            updateTargetActualHours(targetId, actualHours);
+        });
+    });
+}
+ function updateTargetActualHours(targetId, actualHours) {
+    if (!currentUser) return;
+    
+    console.log("Updating target:", targetId, "with hours:", actualHours);
+    
+    const target = userTargets.find(t => t.id === targetId);
+    if (!target) return;
+    
+    // Calculate completion percentage
+    const plannedHours = target.plannedHours || 1;
+    const percentage = Math.min(100, (actualHours / plannedHours) * 100);
+    const completed = percentage >= 100; // Mark as completed if reached or exceeded planned hours
+    
+    db.collection('targets').doc(targetId).update({
+        actualHours: actualHours,
+        completed: completed,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+        // Update local data
+        target.actualHours = actualHours;
+        target.completed = completed;
         
+        // Update UI immediately
+        const targetElement = document.querySelector(`.target-item[data-id="${targetId}"]`);
+        if (targetElement) {
+            // Update progress bar
+            const progressFill = targetElement.querySelector('.progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${percentage}%`;
+                progressFill.style.backgroundColor = completed ? 'var(--success)' : 'var(--secondary)';
+            }
+            
+            // Update status text
+            const statusSpan = targetElement.querySelector('.target-progress span:first-child');
+            if (statusSpan) {
+                statusSpan.textContent = completed ? '✓ Completed' : 'In Progress';
+            }
+            
+            // Update hours text
+            const hoursSpan = targetElement.querySelector('.target-progress span:last-child');
+            if (hoursSpan) {
+                hoursSpan.textContent = `${actualHours}/${plannedHours} hrs`;
+            }
+            
+            // Update button
+            const completeBtn = targetElement.querySelector('.mark-complete-btn');
+            if (completeBtn) {
+                completeBtn.innerHTML = `<i class="fas fa-check"></i> ${completed ? 'Completed' : 'Mark Complete'}`;
+                completeBtn.style.backgroundColor = completed ? '#27ae60' : 'var(--success)';
+            }
+        }
+        
+        showToast('Hours updated successfully!', 'success');
+        
+        // Update dashboard stats
+        updateDashboard();
+        
+        // Update planning stats
+        const today = new Date().toDateString();
+        const todayTargets = userTargets.filter(t => {
+            let targetDate;
+            if (t.targetDate && t.targetDate.toDate) {
+                targetDate = t.targetDate.toDate();
+            } else if (t.targetDate && t.targetDate.seconds) {
+                targetDate = new Date(t.targetDate.seconds * 1000);
+            } else {
+                targetDate = new Date();
+            }
+            return targetDate.toDateString() === today;
+        });
+        updatePlanningStats(todayTargets);
+    })
+    .catch((error) => {
+        console.error("Error updating target:", error);
+        showToast('Error updating target: ' + error.message, 'error');
+    });
+}    
+        function addRemarkToTarget(targetId) {
+    const target = userTargets.find(t => t.id === targetId);
+    if (!target) return;
+    
+    const remark = prompt(`Add a remark for "${target.topic}":\n(Current: ${target.remark || 'No remark'})`, target.remark || '');
+    
+    if (remark !== null) {
+        db.collection('targets').doc(targetId).update({
+            remark: remark,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+            target.remark = remark;
+            showToast('Remark added successfully!', 'success');
+            
+            // Refresh the target display
+            loadTargets();
+        })
+        .catch((error) => {
+            console.error("Error adding remark:", error);
+            showToast('Error adding remark: ' + error.message, 'error');
+        });
+    }
+}
+        function markTargetComplete(targetId) {
+    const target = userTargets.find(t => t.id === targetId);
+    if (!target) return;
+    
+    if (target.completed) {
+        // If already completed, unmark it
+        updateTargetActualHours(targetId, 0);
+    } else {
+        // Mark as complete by setting actual hours to planned hours
+        updateTargetActualHours(targetId, target.plannedHours);
+    }
+}
+        function deleteTarget(targetId) {
+    if (!confirm('Are you sure you want to delete this target?')) return;
+    
+    db.collection('targets').doc(targetId).delete()
+        .then(() => {
+            // Remove from local data
+            userTargets = userTargets.filter(t => t.id !== targetId);
+            
+            // Remove from DOM
+            const targetElement = document.querySelector(`.target-item[data-id="${targetId}"]`);
+            if (targetElement) {
+                targetElement.remove();
+            }
+            
+            showToast('Target deleted successfully!', 'success');
+            
+            // Update stats
+            const today = new Date().toDateString();
+            const todayTargets = userTargets.filter(t => {
+                let targetDate;
+                if (t.targetDate && t.targetDate.toDate) {
+                    targetDate = t.targetDate.toDate();
+                } else if (t.targetDate && t.targetDate.seconds) {
+                    targetDate = new Date(t.targetDate.seconds * 1000);
+                } else {
+                    targetDate = new Date();
+                }
+                return targetDate.toDateString() === today;
+            });
+            updatePlanningStats(todayTargets);
+        })
+        .catch((error) => {
+            console.error("Error deleting target:", error);
+            showToast('Error deleting target: ' + error.message, 'error');
+        });
+}
+        function updatePlanningStats(todayTargets) {
+    const totalTargets = todayTargets.length;
+    const completedTargets = todayTargets.filter(t => t.completed).length;
+    const totalPlannedHours = todayTargets.reduce((sum, t) => sum + (t.plannedHours || 0), 0);
+    const totalActualHours = todayTargets.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+    
+    document.getElementById('today-targets').textContent = totalTargets;
+    document.getElementById('today-completed').textContent = completedTargets;
+    
+    // Add more stats if needed
+    const statsContainer = document.querySelector('.planning-stats');
+    if (statsContainer && !statsContainer.querySelector('#today-hours')) {
+        statsContainer.innerHTML += `
+            <div class="planning-stat">
+                <div class="value" id="today-planned">${totalPlannedHours}</div>
+                <div class="label">Planned Hours</div>
+            </div>
+            <div class="planning-stat">
+                <div class="value" id="today-actual">${totalActualHours}</div>
+                <div class="label">Actual Hours</div>
+            </div>
+        `;
+    } else if (statsContainer) {
+        document.getElementById('today-planned').textContent = totalPlannedHours;
+        document.getElementById('today-actual').textContent = totalActualHours;
+    }
+}
         // Study Plan Functions
         function calculateStudyPlan() {
             const daysToExam = parseInt(document.getElementById('days-to-exam').value) || 90;
