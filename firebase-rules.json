@@ -1,0 +1,40 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('users').child($uid).child('isPublic').val() == true)",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "userProgress": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "videos": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$videoId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('addedBy').val() == auth.uid)"
+      }
+    },
+    "notes": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$noteId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('addedBy').val() == auth.uid)"
+      }
+    },
+    "customTopics": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    }
+  }
+}
