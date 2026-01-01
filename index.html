@@ -5,19 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CA Final Study Tracker</title>
     
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <!-- Firebase SDK (v9 Modular) -->
+    <script type="module">
+        // Import the functions you need from the SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+        
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVUi-vAyvE-g_iK4W9zbTTa5Ps8MwZEtg",
+            authDomain: "ca-final-537aa.firebaseapp.com",
+            projectId: "ca-final-537aa",
+            storageBucket: "ca-final-537aa.firebasestorage.app",
+            messagingSenderId: "156489737512",
+            appId: "1:156489737512:web:f8b06ec7cba71ddfe99c1d"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Make Firebase available globally
+        window.firebase = {
+            app: app,
+            auth: auth,
+            db: db,
+            onAuthStateChanged: onAuthStateChanged
+        };
+        
+        console.log("Firebase initialized successfully!");
+    </script>
     
-    <!-- Other stylesheets -->
+    <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css">
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Loading screen styles */
+        /* Loading screen */
         #loadingScreen {
             position: fixed;
             top: 0;
@@ -29,25 +57,59 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            color: white;
+            text-align: center;
+            padding: 20px;
         }
         
         .loader {
-            text-align: center;
-            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 400px;
         }
         
-        .loader-circle {
-            width: 60px;
-            height: 60px;
+        .spinner {
+            width: 50px;
+            height: 50px;
             border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
+            border-top: 4px solid white;
             border-radius: 50%;
             margin: 0 auto 20px;
             animation: spin 1s linear infinite;
         }
         
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loader h3 {
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .loader p {
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        .loader small {
+            display: block;
+            margin-top: 20px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        
+        /* Error state */
+        .error-box {
+            background: rgba(255, 77, 109, 0.1);
+            border: 1px solid rgba(255, 77, 109, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            display: none;
         }
     </style>
 </head>
@@ -55,16 +117,22 @@
     <!-- Loading Screen -->
     <div id="loadingScreen">
         <div class="loader">
-            <div class="loader-inner">
-                <div class="loader-circle"></div>
-                <h3>Loading CA Final Tracker</h3>
-                <p>Preparing your study dashboard...</p>
+            <div class="spinner"></div>
+            <h3>Loading CA Final Tracker</h3>
+            <p>Initializing your study dashboard...</p>
+            <small id="loadingStatus">Connecting to Firebase...</small>
+            <div class="error-box" id="firebaseError">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="errorMessage"></span>
+                <br>
+                <small>Check console for details (F12)</small>
             </div>
         </div>
     </div>
 
     <!-- Login Screen -->
-    <div id="loginScreen" class="screen">
+    <div id="loginScreen" class="screen" style="display: none;">
+        <!-- Your login screen content -->
         <div class="login-container">
             <div class="logo-section">
                 <div class="logo">📚</div>
@@ -76,8 +144,8 @@
             <div class="auth-form active" id="loginForm">
                 <h2>Welcome Back!</h2>
                 <div class="input-group">
-                    <i class="fas fa-user"></i>
-                    <input type="text" id="loginId" placeholder="Your ID or Email" required>
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="loginEmail" placeholder="Email" required>
                 </div>
                 <div class="input-group">
                     <i class="fas fa-lock"></i>
@@ -96,7 +164,7 @@
                 <div class="auth-footer">
                     <p>New user? <a href="#" onclick="showSignup()">Create account</a></p>
                     <div class="demo-credentials">
-                        <p><strong>Demo Login:</strong> ID: demo | Password: demo123</p>
+                        <p><strong>Demo Login:</strong> demo@example.com | Password: demo123</p>
                     </div>
                 </div>
             </div>
@@ -104,10 +172,6 @@
             <!-- Signup Form -->
             <div class="auth-form" id="signupForm">
                 <h2>Create Account</h2>
-                <div class="input-group">
-                    <i class="fas fa-user"></i>
-                    <input type="text" id="signupId" placeholder="Choose an ID" required>
-                </div>
                 <div class="input-group">
                     <i class="fas fa-user-circle"></i>
                     <input type="text" id="signupName" placeholder="Full Name" required>
@@ -130,11 +194,10 @@
                 
                 <div class="auth-footer">
                     <p>Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
-                    <p class="remember-id">💡 Remember your ID for login</p>
                 </div>
             </div>
             
-            <!-- Nice Connect Section -->
+            <!-- Contact Info -->
             <div class="nice-connect">
                 <h3>Designed by Satyam Kumar</h3>
                 <div class="social-links">
@@ -147,22 +210,16 @@
                     <a href="https://www.instagram.com/satyqm2.o?igsh=bmQ0aThzamRmMHli" target="_blank" title="Instagram">
                         <i class="fab fa-instagram"></i>
                     </a>
-                    <a href="https://satqm.github.io/Portfolio-/" target="_blank" title="Portfolio">
-                        <i class="fas fa-briefcase"></i>
-                    </a>
-                    <a href="https://wa.me/919142300129" target="_blank" title="WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
                 </div>
                 <p class="copyright">© 2024 CA Final Tracker</p>
             </div>
         </div>
     </div>
 
-    <!-- Main App -->
-    <div id="appScreen" class="screen">
-        <!-- Header -->
-        <header class="app-header">
+    <!-- Main App Screen -->
+    <div id="appScreen" class="screen" style="display: none;">
+        <!-- Your app content here -->
+        <div class="app-header">
             <div class="header-left">
                 <button class="menu-btn" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
@@ -178,564 +235,80 @@
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
             </div>
-        </header>
+        </div>
 
-        <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
-            <div class="sidebar-content">
-                <nav>
-                    <a href="#" class="nav-item active" onclick="showTab('dashboard')">
-                        <i class="fas fa-chart-pie"></i> Dashboard
-                    </a>
-                    <a href="#" class="nav-item" onclick="showTab('progress')">
-                        <i class="fas fa-book"></i> Study Progress
-                    </a>
-                    <a href="#" class="nav-item" onclick="showTab('tracker')">
-                        <i class="fas fa-tasks"></i> Progress Tracker
-                    </a>
-                    <a href="#" class="nav-item" onclick="showTab('videos')">
-                        <i class="fas fa-video"></i> Videos
-                    </a>
-                    <a href="#" class="nav-item" onclick="showTab('notes')">
-                        <i class="fas fa-file-alt"></i> Notes
-                    </a>
-                    <a href="#" class="nav-item" onclick="showTab('planner')">
-                        <i class="fas fa-calendar-alt"></i> Study Planner
-                    </a>
-                </nav>
-                
-                <div class="sidebar-footer">
-                    <div class="progress-summary">
-                        <div class="progress-circle">
-                            <canvas id="overallProgressCircle" width="80" height="80"></canvas>
-                            <span id="overallProgressText">0%</span>
-                        </div>
-                        <div class="progress-info">
-                            <h4>Overall Progress</h4>
-                            <p id="progressSubtitle">0 of 83 topics</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Sidebar content -->
         </div>
 
-        <!-- Main Content -->
         <main class="main-content" id="mainContent">
-            <!-- Dashboard Tab -->
-            <div id="dashboardTab" class="tab-content active">
-                <div class="dashboard-header">
-                    <h2><i class="fas fa-chart-line"></i> Performance Dashboard</h2>
-                    <div class="dashboard-controls">
-                        <div class="view-toggle">
-                            <button class="view-btn active" onclick="setProgressView('overall')">Overall</button>
-                            <button class="view-btn" onclick="setProgressView('subject')">Subject-wise</button>
-                        </div>
-                        <select id="subjectFilterDashboard" class="subject-dropdown" style="display: none;" onchange="updateDashboardCharts()">
-                            <option value="all">All Subjects</option>
-                            <option value="Paper 1: FR">Paper 1: FR</option>
-                            <option value="Paper 2: AFM">Paper 2: AFM</option>
-                            <option value="Paper 3: Audit">Paper 3: Audit</option>
-                            <option value="Paper 4: DT">Paper 4: DT</option>
-                            <option value="Paper 5: IDT">Paper 5: IDT</option>
-                            <option value="Paper 6: IBS">Paper 6: IBS</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- KPI Cards -->
-                <div class="kpi-grid">
-                    <div class="kpi-card">
-                        <div class="kpi-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="kpi-content">
-                            <h3>Planned Hours</h3>
-                            <span class="kpi-value" id="plannedHours">680</span>
-                            <p class="kpi-label">Total Syllabus Hours</p>
-                        </div>
-                    </div>
-                    
-                    <div class="kpi-card">
-                        <div class="kpi-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="kpi-content">
-                            <h3>Actual Hours</h3>
-                            <span class="kpi-value" id="actualHours">0</span>
-                            <p class="kpi-label">Hours Studied</p>
-                        </div>
-                    </div>
-                    
-                    <div class="kpi-card">
-                        <div class="kpi-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                            <i class="fas fa-percentage"></i>
-                        </div>
-                        <div class="kpi-content">
-                            <h3>Completion %</h3>
-                            <span class="kpi-value" id="completionPercent">0%</span>
-                            <p class="kpi-label">Of Total Syllabus</p>
-                        </div>
-                    </div>
-                    
-                    <div class="kpi-card">
-                        <div class="kpi-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                            <i class="fas fa-book-open"></i>
-                        </div>
-                        <div class="kpi-content">
-                            <h3>Topics Done</h3>
-                            <span class="kpi-value" id="topicsDone">0</span>
-                            <p class="kpi-label">Out of 83 Topics</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Progress Charts -->
-                <div class="chart-container">
-                    <div class="chart-card">
-                        <h3><i class="fas fa-chart-pie"></i> Progress Overview</h3>
-                        <div class="chart-wrapper">
-                            <canvas id="progressChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-card">
-                        <h3><i class="fas fa-tachometer-alt"></i> Subject Progress</h3>
-                        <div class="chart-wrapper">
-                            <canvas id="subjectChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Activity -->
-                <div class="activity-card">
-                    <h3><i class="fas fa-history"></i> Recent Activity</h3>
-                    <div id="recentActivity" class="activity-list">
-                        <div class="activity-item">
-                            <i class="fas fa-info-circle text-info"></i>
-                            <span>No recent activity. Start studying!</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Stats -->
-                <div class="quick-stats">
-                    <div class="stat-card">
-                        <h4><i class="fas fa-running"></i> Study Streak</h4>
-                        <div class="stat-value">0 days</div>
-                    </div>
-                    <div class="stat-card">
-                        <h4><i class="fas fa-bolt"></i> Daily Goal</h4>
-                        <div class="stat-value">3 hrs</div>
-                    </div>
-                    <div class="stat-card">
-                        <h4><i class="fas fa-calendar-check"></i> Days Left</h4>
-                        <div class="stat-value" id="daysLeft">180</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Study Progress Tab -->
-            <div id="progressTab" class="tab-content">
-                <div class="syllabus-header">
-                    <h2><i class="fas fa-book"></i> Study Progress Overview</h2>
-                    <div class="progress-filters">
-                        <select id="subjectFilter" onchange="loadSyllabusTable()">
-                            <option value="all">All Subjects</option>
-                            <option value="Paper 1: FR">Paper 1: FR</option>
-                            <option value="Paper 2: AFM">Paper 2: AFM</option>
-                            <option value="Paper 3: Audit">Paper 3: Audit</option>
-                            <option value="Paper 4: DT">Paper 4: DT</option>
-                            <option value="Paper 5: IDT">Paper 5: IDT</option>
-                            <option value="Paper 6: IBS">Paper 6: IBS</option>
-                        </select>
-                        <select id="statusFilter" onchange="loadSyllabusTable()">
-                            <option value="all">All Status</option>
-                            <option value="not-started">Not Started</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                        <select id="priorityFilter" onchange="loadSyllabusTable()">
-                            <option value="all">All Priorities</option>
-                            <option value="A">Priority A</option>
-                            <option value="B">Priority B</option>
-                            <option value="C">Priority C</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table id="syllabusTable">
-                        <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>Topic</th>
-                                <th>Subtopic</th>
-                                <th>Weightage</th>
-                                <th>Priority</th>
-                                <th>Planned Hours</th>
-                                <th>Actual Hours</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="syllabusTableBody">
-                            <!-- Syllabus data will be loaded here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Progress Tracker Tab -->
-            <div id="trackerTab" class="tab-content">
-                <div class="tracker-header">
-                    <h2><i class="fas fa-tasks"></i> Progress Tracker</h2>
-                    <div class="tracker-controls">
-                        <div class="subject-selector">
-                            <select id="trackerSubject" onchange="loadSubjectForTracker()">
-                                <option value="">Select Subject</option>
-                                <option value="Paper 1: FR">Paper 1: FR</option>
-                                <option value="Paper 2: AFM">Paper 2: AFM</option>
-                                <option value="Paper 3: Audit">Paper 3: Audit</option>
-                                <option value="Paper 4: DT">Paper 4: DT</option>
-                                <option value="Paper 5: IDT">Paper 5: IDT</option>
-                                <option value="Paper 6: IBS">Paper 6: IBS</option>
-                            </select>
-                            <button class="btn-secondary" onclick="showAllTopics()">
-                                <i class="fas fa-list"></i> Show All
-                            </button>
-                        </div>
-                        <button class="btn-primary" onclick="openCustomPlanModal()">
-                            <i class="fas fa-plus"></i> Add Custom Topic
-                        </button>
-                    </div>
-                </div>
-
-                <div class="tracker-content" id="trackerContent">
-                    <div class="empty-state">
-                        <i class="fas fa-book-open"></i>
-                        <h3>Select a subject to track progress</h3>
-                        <p>Choose a subject from the dropdown above to start tracking your study progress.</p>
-                        <button class="btn-primary" onclick="showAllTopics()">
-                            <i class="fas fa-eye"></i> View All Topics
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Videos Tab -->
-            <div id="videosTab" class="tab-content">
-                <div class="resource-header">
-                    <h2><i class="fas fa-video"></i> Study Videos</h2>
-                    <button class="btn-primary" onclick="openVideoForm()">
-                        <i class="fas fa-plus"></i> Add Video
-                    </button>
-                </div>
-
-                <!-- Add Video Form -->
-                <div id="videoForm" class="resource-form" style="display: none;">
-                    <h3>Add New Video/Playlist</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Subject:</label>
-                            <select id="videoSubject">
-                                <option value="All">All Subjects</option>
-                                <option value="Paper 1: FR">Paper 1: FR</option>
-                                <option value="Paper 2: AFM">Paper 2: AFM</option>
-                                <option value="Paper 3: Audit">Paper 3: Audit</option>
-                                <option value="Paper 4: DT">Paper 4: DT</option>
-                                <option value="Paper 5: IDT">Paper 5: IDT</option>
-                                <option value="Paper 6: IBS">Paper 6: IBS</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Type:</label>
-                            <select id="videoType">
-                                <option value="video">Single Video</option>
-                                <option value="playlist">Playlist</option>
-                                <option value="lecture">Lecture</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Title:</label>
-                        <input type="text" id="videoTitle" placeholder="Enter video title">
-                    </div>
-                    <div class="form-group">
-                        <label>Video/Playlist Link:</label>
-                        <input type="url" id="videoLink" placeholder="Enter YouTube/other video link">
-                    </div>
-                    <div class="form-group">
-                        <label>Description:</label>
-                        <textarea id="videoDescription" placeholder="Brief description of the video content" rows="3"></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button class="btn-secondary" onclick="closeVideoForm()">Cancel</button>
-                        <button class="btn-primary" onclick="addVideo()">Add Video</button>
-                    </div>
-                </div>
-
-                <!-- Videos Grid -->
-                <div class="resource-grid" id="videosList">
-                    <div class="resource-card placeholder">
-                        <i class="fas fa-video"></i>
-                        <h4>No videos added yet</h4>
-                        <p>Add your first video to get started</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notes Tab -->
-            <div id="notesTab" class="tab-content">
-                <div class="resource-header">
-                    <h2><i class="fas fa-file-alt"></i> Study Notes</h2>
-                    <button class="btn-primary" onclick="openNotesForm()">
-                        <i class="fas fa-plus"></i> Add Notes
-                    </button>
-                </div>
-
-                <!-- Add Notes Form -->
-                <div id="notesForm" class="resource-form" style="display: none;">
-                    <h3>Add New Notes</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Subject:</label>
-                            <select id="notesSubject">
-                                <option value="All">All Subjects</option>
-                                <option value="Paper 1: FR">Paper 1: FR</option>
-                                <option value="Paper 2: AFM">Paper 2: AFM</option>
-                                <option value="Paper 3: Audit">Paper 3: Audit</option>
-                                <option value="Paper 4: DT">Paper 4: DT</option>
-                                <option value="Paper 5: IDT">Paper 5: IDT</option>
-                                <option value="Paper 6: IBS">Paper 6: IBS</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Format:</label>
-                            <select id="notesFormat">
-                                <option value="pdf">PDF</option>
-                                <option value="doc">DOC</option>
-                                <option value="drive">Google Drive</option>
-                                <option value="link">Web Link</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Title:</label>
-                        <input type="text" id="notesTitle" placeholder="Enter notes title">
-                    </div>
-                    <div class="form-group">
-                        <label>Notes Link:</label>
-                        <input type="url" id="notesLink" placeholder="Enter Google Drive or other link">
-                    </div>
-                    <div class="form-group">
-                        <label>Description:</label>
-                        <textarea id="notesDescription" placeholder="Brief description of notes" rows="3"></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button class="btn-secondary" onclick="closeNotesForm()">Cancel</button>
-                        <button class="btn-primary" onclick="addNotes()">Add Notes</button>
-                    </div>
-                </div>
-
-                <!-- Notes Grid -->
-                <div class="resource-grid" id="notesList">
-                    <div class="resource-card placeholder">
-                        <i class="fas fa-file-alt"></i>
-                        <h4>No notes added yet</h4>
-                        <p>Add your first notes to get started</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Study Planner Tab -->
-            <div id="plannerTab" class="tab-content">
-                <div class="planner-header">
-                    <h2><i class="fas fa-calendar-alt"></i> Study Planner</h2>
-                    <div class="planner-controls">
-                        <button class="btn-primary" onclick="generateStudyPlan()">
-                            <i class="fas fa-magic"></i> Generate Plan
-                        </button>
-                        <button class="btn-secondary" onclick="clearStudyPlan()">
-                            <i class="fas fa-trash"></i> Clear Plan
-                        </button>
-                    </div>
-                </div>
-
-                <div class="planner-content">
-                    <div class="planner-card">
-                        <h3><i class="fas fa-calculator"></i> Plan Calculator</h3>
-                        <div class="plan-inputs">
-                            <div class="input-group">
-                                <label>Total Days Available:</label>
-                                <input type="number" id="totalDays" value="180" min="1" max="365">
-                            </div>
-                            <div class="input-group">
-                                <label>Daily Study Hours:</label>
-                                <input type="number" id="dailyHours" value="4" min="1" max="12" step="0.5">
-                            </div>
-                            <div class="input-group">
-                                <label>Start Date:</label>
-                                <input type="date" id="startDate" value="">
-                            </div>
-                            <button class="btn-primary" onclick="calculateStudyPlan()">
-                                <i class="fas fa-calculator"></i> Calculate Plan
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="planner-card">
-                        <h3><i class="fas fa-chart-bar"></i> Study Schedule</h3>
-                        <div id="studySchedule">
-                            <div class="empty-state">
-                                <i class="fas fa-calendar"></i>
-                                <h4>No study plan generated yet</h4>
-                                <p>Use the calculator to generate a study schedule</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="planner-card">
-                        <h3><i class="fas fa-bullseye"></i> Daily Targets</h3>
-                        <div id="dailyTargets">
-                            <div class="target-item">
-                                <div class="target-subject">Paper 1: FR</div>
-                                <div class="target-progress">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: 0%"></div>
-                                    </div>
-                                    <span>0/32 topics</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Main app tabs -->
         </main>
-
-        <!-- Progress Update Modal -->
-        <div id="progressModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Update Study Progress</h3>
-                    <button class="modal-close" onclick="closeProgressModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="topic-info" id="modalTopicInfo">
-                        <h4 id="modalTopicName"></h4>
-                        <p id="modalSubtopicName"></p>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Status:</label>
-                        <div class="status-buttons">
-                            <button class="status-btn not-started active" onclick="setStatus('not-started')">Not Started</button>
-                            <button class="status-btn in-progress" onclick="setStatus('in-progress')">In Progress</button>
-                            <button class="status-btn completed" onclick="setStatus('completed')">Completed</button>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Planned Hours:</label>
-                            <input type="number" id="plannedHoursInput" min="0" step="0.5" placeholder="Enter hours">
-                        </div>
-                        <div class="form-group">
-                            <label>Actual Hours Spent:</label>
-                            <input type="number" id="actualHoursInput" min="0" step="0.5" placeholder="Enter hours">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Notes (optional):</label>
-                        <textarea id="progressNotes" placeholder="Any additional notes about your progress..." rows="3"></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Completion Date:</label>
-                        <input type="date" id="completionDate">
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn-secondary" onclick="closeProgressModal()">Cancel</button>
-                    <button class="btn-primary" onclick="saveProgress()">Save Progress</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Custom Plan Modal -->
-        <div id="customPlanModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Add Custom Topic</h3>
-                    <button class="modal-close" onclick="closeCustomPlanModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Subject:</label>
-                            <select id="customSubject" required>
-                                <option value="">Select Subject</option>
-                                <option value="Paper 1: FR">Paper 1: FR</option>
-                                <option value="Paper 2: AFM">Paper 2: AFM</option>
-                                <option value="Paper 3: Audit">Paper 3: Audit</option>
-                                <option value="Paper 4: DT">Paper 4: DT</option>
-                                <option value="Paper 5: IDT">Paper 5: IDT</option>
-                                <option value="Paper 6: IBS">Paper 6: IBS</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Priority:</label>
-                            <select id="customPriority">
-                                <option value="A">Priority A</option>
-                                <option value="B">Priority B</option>
-                                <option value="C">Priority C</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Topic Name:</label>
-                        <input type="text" id="customTopicName" placeholder="Enter topic name" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Subtopic Name:</label>
-                        <input type="text" id="customSubtopicName" placeholder="Enter subtopic name" required>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Weightage:</label>
-                            <input type="text" id="customWeightage" placeholder="e.g., 10-15%">
-                        </div>
-                        <div class="form-group">
-                            <label>Planned Hours:</label>
-                            <input type="number" id="customPlannedHours" min="0" step="0.5" placeholder="Hours" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Description (optional):</label>
-                        <textarea id="customDescription" placeholder="Brief description of this topic" rows="2"></textarea>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn-secondary" onclick="closeCustomPlanModal()">Cancel</button>
-                    <button class="btn-primary" onclick="saveCustomTopic()">Add Topic</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notification Toast -->
-        <div id="notificationToast" class="toast"></div>
     </div>
 
-    <!-- Firebase and Chart.js -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="firebase-config.js"></script>
+    
+    <!-- Main App Script -->
     <script src="app.js"></script>
+    
+    <!-- Initialize App -->
+    <script>
+        // Wait for Firebase to initialize
+        setTimeout(() => {
+            if (window.firebase) {
+                console.log("Firebase loaded, initializing app...");
+                initializeApp();
+            } else {
+                console.error("Firebase not loaded!");
+                showFirebaseError("Firebase failed to load. Check your connection.");
+            }
+        }, 2000);
+        
+        function updateLoadingStatus(message) {
+            const status = document.getElementById('loadingStatus');
+            if (status) status.textContent = message;
+        }
+        
+        function showFirebaseError(message) {
+            const errorBox = document.getElementById('firebaseError');
+            const errorMessage = document.getElementById('errorMessage');
+            if (errorBox && errorMessage) {
+                errorMessage.textContent = message;
+                errorBox.style.display = 'block';
+            }
+        }
+        
+        function initializeApp() {
+            try {
+                updateLoadingStatus("Checking authentication...");
+                
+                // Check auth state
+                window.firebase.onAuthStateChanged(window.firebase.auth, (user) => {
+                    if (user) {
+                        // User is signed in
+                        updateLoadingStatus("Loading user data...");
+                        currentUser = user;
+                        showApp();
+                    } else {
+                        // No user signed in
+                        updateLoadingStatus("Showing login screen...");
+                        showLoginScreen();
+                    }
+                    
+                    // Hide loading screen
+                    setTimeout(() => {
+                        const loadingScreen = document.getElementById('loadingScreen');
+                        if (loadingScreen) {
+                            loadingScreen.style.display = 'none';
+                        }
+                    }, 500);
+                });
+            } catch (error) {
+                console.error("App initialization error:", error);
+                showFirebaseError("App initialization failed: " + error.message);
+            }
+        }
+    </script>
 </body>
-    </html>
+</html>
