@@ -3396,26 +3396,122 @@
             });
             
             // Load targets
-            loadTargets();
-        }
-        
-        function initializeUserData() {
-            if (!currentUser) return;
+function loadTargets() {
+    if (!currentUser) return;
+    
+    console.log("Loading targets for user:", currentUser.uid); // Debug log
+    
+    db.collection('targets')
+        .where('userId', '==', currentUser.uid)
+        .orderBy('targetDate', 'desc')
+        .get()
+        .then((querySnapshot) => {
+            console.log("Targets found:", querySnapshot.size); // Debug log
+            userTargets = [];
+            const targetsList = document.getElementById('targets-list');
             
-            // Initialize progress
-            initializeUserProgress();
+            if (querySnapshot.empty) {
+                targetsList.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-plus"></i><h3>No targets set</h3><p>Add your first target to get started!</p></div>';
+                updatePlanningStats([]);
+                return;
+            }
             
-            // Initialize default study plan (680 hours default)
-            const defaultPlan = {
-                userId: currentUser.uid,
-                daysToExam: 90,
-                dailyHours: 6,
-                totalHours: 540,
-                startDate: formattedToday,
-                examDate: calculateExamDate(90),
-                subjectHours: {},
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
+            let targetsHTML = '';
+            const today = new Date().toDateString();
+            const todayTargets = [];
+            
+            querySnapshot.forEach((doc) => {
+                const target = doc.data();
+                target.id = doc.id;
+                userTargets.push(target);
+                
+                // Handle Firestore timestamp
+                let targetDate;
+                if (target.targetDate && target.targetDate.toDate) {
+                    targetDate = target.targetDate.toDate();
+                } else if (target.targetDate && target.targetDate.seconds) {
+                    targetDate = new Date(target.targetDate.seconds * 1000);
+                } else {
+                    targetDate = new Date();
+                }
+                
+                const isToday = targetDate.toDateString() === today;
+                
+                if (isToday) {
+                    todayTargets.push(target);
+                }
+                
+                const subjectName = getSubjectName(target.subject);
+                
+                targetsHTML += `<div class="target-item" data-id="${doc.id}">
+                    <div class="target-header">
+                        <div class="target-title">${target.topic}</div>
+                        <span class="target-subject">${subjectName}</span>
+                    </div>
+                    <div class="target-details">
+                        <div>Type: ${target.targetType}</div>
+                        <div>Date: ${formatDate(targetDate)}</div>
+                    </div>
+                    <div class="target-time">
+                        <div class="target-planned">
+                            <strong>Planned:</strong> ${target.plannedHours} hrs
+                        </div>
+                        <div class="target-actual">
+                            <strong>Actual:</strong>
+                            <input type="number" 
+                                   class="actual-hours-input"
+                                   value="${target.actualHours || 0}"
+                                   min="0"
+                                   step="0.5"
+                                   data-id="${doc.id}">
+                            <span>hrs</span>
+                        </div>
+                    </div>
+                    ${target.description ? `<p style="margin-top: 10px; color: var(--gray); font-size: 14px;">${target.description}</p>` : ''}
+                    <div class="target-actions">
+                        <button class="mark-complete-btn" data-id="${doc.id}">
+                            <i class="fas fa-check"></i> Mark Complete
+                        </button>
+                        <button class="delete-target-btn" data-id="${doc.id}">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>`;
+            });
+            
+            targetsList.innerHTML = targetsHTML;
+            updatePlanningStats(todayTargets);
+            
+            // Add event listeners
+            document.querySelectorAll('.actual-hours-input').forEach(input => {
+                input.addEventListener('change', function() {
+                    const targetId = this.getAttribute('data-id');
+                    const actualHours = parseFloat(this.value) || 0;
+                    updateTargetActualHours(targetId, actualHours);
+                });
+            });
+            
+            document.querySelectorAll('.mark-complete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-id');
+                    markTargetComplete(targetId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-target-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-id');
+                    deleteTarget(targetId);
+                });
+            });
+            
+        })
+        .catch((error) => {
+            console.error("Error loading targets:", error);
+            document.getElementById('targets-list').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error loading targets: ' + error.message + '</h3></div>';
+        });
+}
+
             
             // Calculate subject hours based on weightage
             for (const subjectId in syllabusData) {
