@@ -1,0 +1,322 @@
+Looking at the error and the code, I can see the issue. The problem is with the way we're storing the date field in the targets collection. When we save new Date(targetDate) in the target data, Firestore stores it as a timestamp, but in our security rules, we're checking resource.data.userId which doesn't account for the nested timestamp structure.
+
+Here's the corrected Firestore rules:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /userProgress/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /studyPlans/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /videos/{videoId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+                    request.auth.uid == resource.data.addedBy;
+    }
+    
+    match /resources/{resourceId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+                    request.auth.uid == resource.data.addedBy;
+    }
+    
+    match /targets/{targetId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+  }
+}
+```
+
+However, there's another issue in your code!
+
+The actual problem is in how you're trying to save the target. When you create a target, you need to ensure that the userId field is properly set. Looking at your code, I can see the issue:
+
+In your saveTarget() function, you're creating the target with:
+
+```javascript
+const targetData = {
+    userId: currentUser.uid,
+    targetType: targetType,
+    targetDate: new Date(targetDate),
+    // ... other fields
+};
+```
+
+The issue might be with the date conversion. Let me fix your JavaScript code to ensure the target is saved properly:
+
+Update the saveTarget() function in your JavaScript code:
+
+```javascript
+function saveTarget() {
+    if (!currentUser) return;
+    
+    const targetType = document.getElementById('target-type').value;
+    const targetDate = document.getElementById('target-date').value;
+    const subject = document.getElementById('planning-subject').value;
+    const topicSelect = document.getElementById('planning-topic').value;
+    const customTopic = document.getElementById('custom-topic').value;
+    const subtopic = document.getElementById('planning-subtopic').value;
+    const plannedHours = parseFloat(document.getElementById('planned-hours-input').value) || 2;
+    const description = document.getElementById('target-description').value;
+    const messageDiv = document.getElementById('target-message');
+    
+    if (!subject || (!topicSelect && !customTopic)) {
+        showMessage(messageDiv, 'Please select subject and topic', 'error');
+        return;
+    }
+    
+    const topic = topicSelect === 'custom' ? customTopic : topicSelect;
+    
+    // Create the target date as Firestore timestamp
+    const targetDateObj = new Date(targetDate);
+    
+    const targetData = {
+        userId: currentUser.uid,
+        targetType: targetType,
+        targetDate: firebase.firestore.Timestamp.fromDate(targetDateObj),
+        subject: subject,
+        topic: topic,
+        subtopic: subtopic || '',
+        plannedHours: plannedHours,
+        actualHours: 0,
+        completed: false,
+        description: description,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    const saveBtn = document.getElementById('save-target-btn');
+    saveBtn.innerHTML = '<div class="loading"></div> Saving...';
+    saveBtn.disabled = true;
+    
+    console.log("Saving target:", targetData); // Debug log
+    
+    db.collection('targets').add(targetData)
+        .then(() => {
+            showMessage(messageDiv, 'Target saved successfully!', 'success');
+            
+            // Reset form
+            document.getElementById('target-date').value = formattedToday;
+            document.getElementById('planning-subject').value = '';
+            document.getElementById('planning-topic').value = '';
+            document.getElementById('custom-topic').value = '';
+            document.getElementById('planning-subtopic').value = '';
+            document.getElementById('planned-hours-input').value = 2;
+            document.getElementById('target-description').value = '';
+            
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Target';
+            saveBtn.disabled = false;
+            
+            // Reload targets
+            loadTargets();
+            showToast('Target saved successfully!', 'success');
+            
+            // Collapse form
+            planningToggle.classList.remove('expanded');
+            planningForm.classList.remove('expanded');
+        })
+        .catch((error) => {
+            console.error("Error saving target:", error);
+            showMessage(messageDiv, 'Error saving target: ' + error.message, 'error');
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Target';
+            saveBtn.disabled = false;
+        });
+}
+```
+
+Also, update the updateTargetActualHours() function:
+
+```javascript
+function updateTargetActualHours(targetId, actualHours) {
+    if (!currentUser) return;
+    
+    console.log("Updating target:", targetId, "with hours:", actualHours); // Debug log
+    
+    db.collection('targets').doc(targetId).update({
+        actualHours: actualHours,
+        completed: actualHours > 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+        // Update local data
+        const target = userTargets.find(t => t.id === targetId);
+        if (target) {
+            target.actualHours = actualHours;
+            target.completed = actualHours > 0;
+        }
+        
+        showToast('Actual hours updated!', 'success');
+        
+        // Update dashboard stats
+        updateDashboard();
+        
+        // Update planning stats
+        const today = new Date().toDateString();
+        const todayTargets = userTargets.filter(t => {
+            const targetDate = t.targetDate ? (t.targetDate.toDate ? t.targetDate.toDate() : new Date(t.targetDate.seconds * 1000)) : new Date();
+            return targetDate.toDateString() === today;
+        });
+        updatePlanningStats(todayTargets);
+    })
+    .catch((error) => {
+        console.error("Error updating target:", error);
+        showToast('Error updating target: ' + error.message, 'error');
+    });
+}
+```
+
+And update the loadTargets() function to handle timestamps properly:
+
+```javascript
+function loadTargets() {
+    if (!currentUser) return;
+    
+    console.log("Loading targets for user:", currentUser.uid); // Debug log
+    
+    db.collection('targets')
+        .where('userId', '==', currentUser.uid)
+        .orderBy('targetDate', 'desc')
+        .get()
+        .then((querySnapshot) => {
+            console.log("Targets found:", querySnapshot.size); // Debug log
+            userTargets = [];
+            const targetsList = document.getElementById('targets-list');
+            
+            if (querySnapshot.empty) {
+                targetsList.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-plus"></i><h3>No targets set</h3><p>Add your first target to get started!</p></div>';
+                updatePlanningStats([]);
+                return;
+            }
+            
+            let targetsHTML = '';
+            const today = new Date().toDateString();
+            const todayTargets = [];
+            
+            querySnapshot.forEach((doc) => {
+                const target = doc.data();
+                target.id = doc.id;
+                userTargets.push(target);
+                
+                // Handle Firestore timestamp
+                let targetDate;
+                if (target.targetDate && target.targetDate.toDate) {
+                    targetDate = target.targetDate.toDate();
+                } else if (target.targetDate && target.targetDate.seconds) {
+                    targetDate = new Date(target.targetDate.seconds * 1000);
+                } else {
+                    targetDate = new Date();
+                }
+                
+                const isToday = targetDate.toDateString() === today;
+                
+                if (isToday) {
+                    todayTargets.push(target);
+                }
+                
+                const subjectName = getSubjectName(target.subject);
+                
+                targetsHTML += `<div class="target-item" data-id="${doc.id}">
+                    <div class="target-header">
+                        <div class="target-title">${target.topic}</div>
+                        <span class="target-subject">${subjectName}</span>
+                    </div>
+                    <div class="target-details">
+                        <div>Type: ${target.targetType}</div>
+                        <div>Date: ${formatDate(targetDate)}</div>
+                    </div>
+                    <div class="target-time">
+                        <div class="target-planned">
+                            <strong>Planned:</strong> ${target.plannedHours} hrs
+                        </div>
+                        <div class="target-actual">
+                            <strong>Actual:</strong>
+                            <input type="number" 
+                                   class="actual-hours-input"
+                                   value="${target.actualHours || 0}"
+                                   min="0"
+                                   step="0.5"
+                                   data-id="${doc.id}">
+                            <span>hrs</span>
+                        </div>
+                    </div>
+                    ${target.description ? `<p style="margin-top: 10px; color: var(--gray); font-size: 14px;">${target.description}</p>` : ''}
+                    <div class="target-actions">
+                        <button class="mark-complete-btn" data-id="${doc.id}">
+                            <i class="fas fa-check"></i> Mark Complete
+                        </button>
+                        <button class="delete-target-btn" data-id="${doc.id}">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>`;
+            });
+            
+            targetsList.innerHTML = targetsHTML;
+            updatePlanningStats(todayTargets);
+            
+            // Add event listeners
+            document.querySelectorAll('.actual-hours-input').forEach(input => {
+                input.addEventListener('change', function() {
+                    const targetId = this.getAttribute('data-id');
+                    const actualHours = parseFloat(this.value) || 0;
+                    updateTargetActualHours(targetId, actualHours);
+                });
+            });
+            
+            document.querySelectorAll('.mark-complete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-id');
+                    markTargetComplete(targetId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-target-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-id');
+                    deleteTarget(targetId);
+                });
+            });
+            
+        })
+        .catch((error) => {
+            console.error("Error loading targets:", error);
+            document.getElementById('targets-list').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error loading targets: ' + error.message + '</h3></div>';
+        });
+}
+```
+
+Summary of Fixes:
+
+1. Firestore Rules: Split the targets collection permissions into separate create, read, update, and delete rules
+2. Date Handling: Use firebase.firestore.Timestamp.fromDate() instead of new Date() when saving
+3. Proper Timestamp Reading: Handle Firestore timestamps correctly when reading data
+4. Debug Logs: Added console logs to help debug issues
+
+Steps to Fix:
+
+1. Update your Firestore rules with the new rules above
+2. Update your JavaScript code with the fixed functions
+3. Make sure you're importing Firebase properly at the top of your file:
+
+```javascript
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+```
+
+After making these changes, the target saving should work properly!
