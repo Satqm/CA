@@ -1,3 +1,45 @@
+// Import Firebase modules
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  signInAnonymously,
+  signOut 
+} from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  limit,
+  serverTimestamp,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+// Your Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVUi-vAyvE-g_iK4W9zbTTa5Ps8MwZEtg",
+  authDomain: "ca-final-537aa.firebaseapp.com",
+  projectId: "ca-final-537aa",
+  storageBucket: "ca-final-537aa.firebasestorage.app",
+  messagingSenderId: "156489737512",
+  appId: "1:156489737512:web:f8b06ec7cba71ddfe99c1d"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
 // Global Variables
 let currentUser = null;
 let currentProgressView = 'overall';
@@ -116,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('loadingScreen').style.display = 'none';
         
         // Check auth state
-        auth.onAuthStateChanged(async (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 await loadUserData();
@@ -185,19 +227,19 @@ async function login() {
         // Check if it's demo login
         if (id === 'demo' && password === 'demo123') {
             // Create demo user
-            const userCredential = await auth.signInAnonymously();
+            const userCredential = await signInAnonymously(auth);
             const user = userCredential.user;
             
             // Check if demo user exists
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (!userDoc.exists) {
-                await db.collection('users').doc(user.uid).set({
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (!userDoc.exists()) {
+                await setDoc(doc(db, 'users', user.uid), {
                     uid: user.uid,
                     userId: 'demo',
                     name: 'Demo User',
                     email: 'demo@cafinal.com',
                     isDemo: true,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: serverTimestamp()
                 });
                 
                 // Initialize demo progress
@@ -214,10 +256,12 @@ async function login() {
             showNotification('Logged in as Demo User', 'success');
         } else {
             // Regular login - find user by ID
-            const usersSnapshot = await db.collection('users')
-                .where('userId', '==', id)
-                .limit(1)
-                .get();
+            const usersQuery = query(
+                collection(db, 'users'),
+                where('userId', '==', id),
+                limit(1)
+            );
+            const usersSnapshot = await getDocs(usersQuery);
             
             if (usersSnapshot.empty) {
                 throw new Error('User ID not found');
@@ -226,10 +270,15 @@ async function login() {
             const userDoc = usersSnapshot.docs[0];
             const userData = userDoc.data();
             
-            // For production, you would use Firebase Auth with email/password
-            // This is a simplified version
+            // Sign in with email and password
+            const userCredential = await signInWithEmailAndPassword(
+                auth, 
+                userData.email, 
+                password
+            );
+            
             currentUser = {
-                uid: userDoc.id,
+                uid: userCredential.user.uid,
                 ...userData
             };
             
@@ -283,36 +332,40 @@ async function signup() {
     
     try {
         // Check if ID already exists
-        const idCheck = await db.collection('users')
-            .where('userId', '==', id)
-            .limit(1)
-            .get();
+        const idQuery = query(
+            collection(db, 'users'),
+            where('userId', '==', id),
+            limit(1)
+        );
+        const idCheck = await getDocs(idQuery);
         
         if (!idCheck.empty) {
             throw new Error('User ID already taken');
         }
         
         // Check if email already exists
-        const emailCheck = await db.collection('users')
-            .where('email', '==', email)
-            .limit(1)
-            .get();
+        const emailQuery = query(
+            collection(db, 'users'),
+            where('email', '==', email),
+            limit(1)
+        );
+        const emailCheck = await getDocs(emailQuery);
         
         if (!emailCheck.empty) {
             throw new Error('Email already registered');
         }
         
         // Create user with email/password
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
         // Create user document
-        await db.collection('users').doc(user.uid).set({
+        await setDoc(doc(db, 'users', user.uid), {
             uid: user.uid,
             userId: id,
             name: name,
             email: email,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
         // Initialize progress
@@ -348,12 +401,12 @@ async function initializeUserProgress(uid) {
             actualHours: 0,
             plannedHours: item.estTime,
             notes: '',
-            lastUpdated: null,
+            lastUpdated: serverTimestamp(),
             completedDate: null
         };
     });
     
-    await db.collection('userProgress').doc(uid).set({ progress });
+    await setDoc(doc(db, 'userProgress', uid), { progress });
 }
 
 function showLoginScreen() {
@@ -379,7 +432,7 @@ function showApp() {
 
 async function logout() {
     try {
-        await auth.signOut();
+        await signOut(auth);
         currentUser = null;
         syllabusData = [];
         showLoginScreen();
@@ -396,7 +449,7 @@ async function loadUserData() {
     
     try {
         // Load user progress
-        const progressDoc = await db.collection('userProgress').doc(currentUser.uid).get();
+        const progressDoc = await getDoc(doc(db, 'userProgress', currentUser.uid));
         
         // Initialize syllabus data with default values
         syllabusData = syllabus.map(item => {
@@ -409,7 +462,7 @@ async function loadUserData() {
                 completedDate: null
             };
             
-            if (progressDoc.exists) {
+            if (progressDoc.exists()) {
                 const userProgress = progressDoc.data().progress || {};
                 return {
                     ...item,
@@ -425,9 +478,11 @@ async function loadUserData() {
         });
         
         // Load custom topics if any
-        const customTopics = await db.collection('customTopics')
-            .where('userId', '==', currentUser.uid)
-            .get();
+        const customQuery = query(
+            collection(db, 'customTopics'),
+            where('userId', '==', currentUser.uid)
+        );
+        const customTopics = await getDocs(customQuery);
             
         if (!customTopics.empty) {
             customTopics.forEach(doc => {
@@ -1071,20 +1126,20 @@ async function saveProgress(itemId = null) {
     const completedDate = status === 'completed' ? new Date().toISOString().split('T')[0] : null;
     
     try {
-        const progressRef = db.collection('userProgress').doc(currentUser.uid);
-        const doc = await progressRef.get();
-        const currentProgress = doc.exists ? doc.data().progress : {};
+        const progressRef = doc(db, 'userProgress', currentUser.uid);
+        const docSnap = await getDoc(progressRef);
+        const currentProgress = docSnap.exists() ? docSnap.data().progress : {};
         
         currentProgress[targetId] = {
             status: status,
             actualHours: actualHours,
             plannedHours: plannedHours,
             notes: notes,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            lastUpdated: serverTimestamp(),
             completedDate: completedDate
         };
         
-        await progressRef.set({ progress: currentProgress }, { merge: true });
+        await updateDoc(progressRef, { progress: currentProgress });
         
         // Update local data
         const itemIndex = syllabusData.findIndex(i => i.id === targetId);
@@ -1172,10 +1227,10 @@ async function saveCustomTopic() {
             actualHours: 0,
             notes: '',
             isCustom: true,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         };
         
-        const docRef = await db.collection('customTopics').add(customTopic);
+        const docRef = await addDoc(collection(db, 'customTopics'), customTopic);
         
         // Add to local data
         syllabusData.push({
@@ -1184,19 +1239,19 @@ async function saveCustomTopic() {
         });
         
         // Update progress
-        const progressRef = db.collection('userProgress').doc(currentUser.uid);
-        const doc = await progressRef.get();
-        const currentProgress = doc.exists ? doc.data().progress : {};
+        const progressRef = doc(db, 'userProgress', currentUser.uid);
+        const docSnap = await getDoc(progressRef);
+        const currentProgress = docSnap.exists() ? docSnap.data().progress : {};
         
         currentProgress[docRef.id] = {
             status: 'not-started',
             actualHours: 0,
             plannedHours: plannedHours,
             notes: '',
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            lastUpdated: serverTimestamp()
         };
         
-        await progressRef.set({ progress: currentProgress }, { merge: true });
+        await updateDoc(progressRef, { progress: currentProgress });
         
         closeCustomPlanModal();
         showNotification('Custom topic added successfully!', 'success');
@@ -1219,15 +1274,15 @@ async function deleteCustomTopic(itemId) {
     if (!confirm('Are you sure you want to delete this custom topic?')) return;
     
     try {
-        await db.collection('customTopics').doc(itemId).delete();
+        await deleteDoc(doc(db, 'customTopics', itemId));
         
         // Remove from progress
-        const progressRef = db.collection('userProgress').doc(currentUser.uid);
-        const doc = await progressRef.get();
-        if (doc.exists) {
-            const currentProgress = doc.data().progress;
+        const progressRef = doc(db, 'userProgress', currentUser.uid);
+        const docSnap = await getDoc(progressRef);
+        if (docSnap.exists()) {
+            const currentProgress = docSnap.data().progress;
             delete currentProgress[itemId];
-            await progressRef.set({ progress: currentProgress }, { merge: true });
+            await updateDoc(progressRef, { progress: currentProgress });
         }
         
         // Remove from local data
@@ -1266,10 +1321,12 @@ async function loadVideos() {
     videosList.innerHTML = '<div class="loading">Loading videos...</div>';
     
     try {
-        const videosSnapshot = await db.collection('videos')
-            .orderBy('createdAt', 'desc')
-            .limit(50)
-            .get();
+        const videosQuery = query(
+            collection(db, 'videos'),
+            orderBy('createdAt', 'desc'),
+            limit(50)
+        );
+        const videosSnapshot = await getDocs(videosQuery);
         
         if (videosSnapshot.empty) {
             videosList.innerHTML = `
@@ -1334,7 +1391,7 @@ async function addVideo() {
     }
     
     try {
-        await db.collection('videos').add({
+        await addDoc(collection(db, 'videos'), {
             subject: subject,
             type: type,
             title: title,
@@ -1342,7 +1399,7 @@ async function addVideo() {
             description: description,
             addedBy: currentUser.uid,
             addedByName: currentUser.name || currentUser.userId,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
         closeVideoForm();
@@ -1358,7 +1415,7 @@ async function deleteVideo(videoId) {
     if (!confirm('Are you sure you want to delete this video?')) return;
     
     try {
-        await db.collection('videos').doc(videoId).delete();
+        await deleteDoc(doc(db, 'videos', videoId));
         loadVideos();
         showNotification('Video deleted successfully!', 'success');
     } catch (error) {
@@ -1384,10 +1441,12 @@ async function loadNotes() {
     notesList.innerHTML = '<div class="loading">Loading notes...</div>';
     
     try {
-        const notesSnapshot = await db.collection('notes')
-            .orderBy('createdAt', 'desc')
-            .limit(50)
-            .get();
+        const notesQuery = query(
+            collection(db, 'notes'),
+            orderBy('createdAt', 'desc'),
+            limit(50)
+        );
+        const notesSnapshot = await getDocs(notesQuery);
         
         if (notesSnapshot.empty) {
             notesList.innerHTML = `
@@ -1452,7 +1511,7 @@ async function addNotes() {
     }
     
     try {
-        await db.collection('notes').add({
+        await addDoc(collection(db, 'notes'), {
             subject: subject,
             format: format,
             title: title,
@@ -1460,7 +1519,7 @@ async function addNotes() {
             description: description,
             addedBy: currentUser.uid,
             addedByName: currentUser.name || currentUser.userId,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
         closeNotesForm();
@@ -1476,7 +1535,7 @@ async function deleteNote(noteId) {
     if (!confirm('Are you sure you want to delete these notes?')) return;
     
     try {
-        await db.collection('notes').doc(noteId).delete();
+        await deleteDoc(doc(db, 'notes', noteId));
         loadNotes();
         showNotification('Notes deleted successfully!', 'success');
     } catch (error) {
